@@ -31,7 +31,7 @@
 
 | Concern | Choice | Rationale |
 |---|---|---|
-| Framework | **Next.js 15** (App Router) | Already using in Fintrack; SSR/SSG flexibility; RSC; runs as Node server on VPS via standalone build |
+| Framework | **Next.js 16** (App Router) | Already using in Fintrack; SSR/SSG flexibility; RSC; runs as Node server on VPS via standalone build |
 | Language | **TypeScript** | Type safety, already in your stack |
 | Styling | **Tailwind CSS v3** | Industry standard, drop Windi |
 | Content | **MDX** via `@next/mdx` | Blog + project case studies in one system |
@@ -328,6 +328,7 @@ What you're currently building / learning / reading. Update every 1–2 months.
 
 ```
 src/components/
+├── theme-provider.tsx       # next-themes wrapper (client)
 ├── layout/
 │   ├── Header.tsx           # Logo + nav + theme toggle
 │   ├── Footer.tsx           # Social links + © year
@@ -336,6 +337,7 @@ src/components/
 │   ├── Button.tsx           # variant: primary | ghost | link
 │   ├── Badge.tsx            # tech stack chips
 │   ├── Card.tsx
+│   ├── FadeIn.tsx           # framer-motion fade-up-on-scroll wrapper
 │   └── ThemeToggle.tsx
 ├── sections/
 │   ├── Hero.tsx
@@ -358,27 +360,30 @@ src/components/
 ## 7. MDX Blog Setup
 
 ```ts
-// next.config.mjs
-import createMDX from '@next/mdx';
-import rehypePrettyCode from 'rehype-pretty-code';
-import rehypeSlug from 'rehype-slug';
-import rehypeAutolinkHeadings from 'rehype-autolink-headings';
-import remarkGfm from 'remark-gfm';
+// next.config.ts
+import type { NextConfig } from "next";
+import createMDX from "@next/mdx";
+import rehypePrettyCode from "rehype-pretty-code";
+import rehypeSlug from "rehype-slug";
+import rehypeAutolinkHeadings from "rehype-autolink-headings";
+import remarkGfm from "remark-gfm";
 
 const withMDX = createMDX({
   options: {
     remarkPlugins: [remarkGfm],
     rehypePlugins: [
       rehypeSlug,
-      [rehypePrettyCode, { theme: 'github-dark-dimmed', keepBackground: false }],
-      [rehypeAutolinkHeadings, { behavior: 'wrap' }],
+      [rehypePrettyCode, { theme: "github-dark-dimmed", keepBackground: false }],
+      [rehypeAutolinkHeadings, { behavior: "wrap" }],
     ],
   },
 });
 
-export default withMDX({
-  pageExtensions: ['ts', 'tsx', 'md', 'mdx'],
-});
+const nextConfig: NextConfig = {
+  pageExtensions: ["ts", "tsx", "md", "mdx"],
+};
+
+export default withMDX(nextConfig);
 ```
 
 - Frontmatter parsing: `gray-matter`
