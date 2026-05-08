@@ -275,28 +275,36 @@ Grid of cards. Each card shows: title, 1-line tagline, tech stack chips, link to
 
 ### Project case study template
 
-Each MDX file uses this frontmatter:
+Each MDX file uses this frontmatter (validated by Zod at build time —
+invalid frontmatter throws and fails the build loud):
 
 ```yaml
 ---
 title: Fintrack
 tagline: Personal AI-powered finance tracker
 stack: [FastAPI, Next.js, PostgreSQL, Redis, MinIO, Telegram, OpenRouter]
-year: 2025
+year: "2025–2026"
 status: in-progress
 role: Solo builder
 featured: true
-ogImage: /projects/fintrack/cover.png
+coverImage: /projects/fintrack/cover.png
+links:
+  repo: https://github.com/aldirifai/fintrack
+  demo: https://fintrack.aldirifai.com
 ---
 ```
 
-Body sections (in order):
-1. **Problem** — what gap does this fill (1 paragraph)
-2. **Architecture** — diagram (mermaid or simple ASCII) + flow description
-3. **Key technical decisions** — 3-5 bullets, each with rationale
-4. **Stack rationale** — why these choices vs alternatives
-5. **What I learned** — honest reflection
-6. **Links** — repo, live demo, related blog posts
+The case study itself lives in the MDX **body**. Five canonical h2 sections
+(rehype-slug auto-assigns ids, TableOfContents auto-extracts):
+
+1. `## Problem` — what gap does this fill (1 paragraph)
+2. `## Architecture` — diagram (mermaid or simple ASCII) + flow description
+3. `## Key decisions` — 3-5 bullets, each with rationale
+4. `## Stack rationale` — why these choices vs alternatives
+5. `## What I learned` — honest reflection
+
+Repo and demo `links` render in the case study sidebar; project pages
+without a body (just `<ComingSoon />`) hide the TOC automatically.
 
 ### Blog (`/blog`)
 
@@ -349,8 +357,9 @@ src/components/
 ├── content/
 │   ├── ProjectCard.tsx      # featured + grid variants
 │   ├── ArticleCard.tsx
-│   ├── MDXComponents.tsx    # custom MDX renderers
-│   └── TableOfContents.tsx
+│   ├── MDXComponents.tsx    # typography map (h2/h3/p/a/code/pre/...) + Callout, ComingSoon, Stack
+│   ├── MDXContent.tsx       # next-mdx-remote/rsc renderer wrapper
+│   └── TableOfContents.tsx  # auto-extracts h2 ids from MDX content via extractToc()
 └── form/
     └── ContactForm.tsx
 ```
@@ -386,10 +395,22 @@ const nextConfig: NextConfig = {
 export default withMDX(nextConfig);
 ```
 
-- Frontmatter parsing: `gray-matter`
+- Frontmatter parsing: `gray-matter` + Zod validation in `src/lib/schemas/`
 - Reading time: `reading-time`
-- TOC: extract `h2`/`h3` from MDX AST at build time
-- RSS: route handler at `/feed.xml`
+- TOC: `extractToc(content)` in `src/lib/mdx.ts` — regex-based h2/h3 scan
+  with `github-slugger` to match the ids that `rehype-slug` emits at build
+- RSS: route handler at `/feed.xml` (`force-static`)
+- Drafts: `draft?: boolean` frontmatter; `getAllPosts()` strips drafts when
+  `process.env.NODE_ENV === "production"`. Dev mode shows them so you can
+  preview locally.
+- Shiki dual theme: `rehype-pretty-code` configured with
+  `theme: { light: "github-light", dark: "github-dark-dimmed" }`.
+  CSS in `globals.css` swaps between the two via `html.dark` selector on
+  the inline `--shiki-light` / `--shiki-dark` custom properties Shiki emits.
+- Content compilation runs through `next-mdx-remote/rsc` (App Router).
+  `@next/mdx` is wired up in `next.config.ts` with serializable string
+  plugin refs (Turbopack constraint), but isn't on the hot path for our
+  content collection.
 
 ---
 
