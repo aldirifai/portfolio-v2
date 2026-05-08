@@ -5,20 +5,12 @@ import { ExternalLink, Github } from "lucide-react";
 import { Container } from "@/components/layout/Container";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { MDXContent } from "@/components/content/MDXContent";
 import { TableOfContents, type TocSection } from "@/components/content/TableOfContents";
-import { getProjectBySlug, projects } from "@/lib/data/projects";
+import { extractToc, getAllProjects, getProjectBySlug } from "@/lib/mdx";
 import type { ProjectStatus } from "@/types/project";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://aldirifai.com";
-
-const CASE_STUDY_SECTIONS: TocSection[] = [
-  { id: "problem", label: "Problem" },
-  { id: "architecture", label: "Architecture" },
-  { id: "decisions", label: "Key decisions" },
-  { id: "stack-rationale", label: "Stack rationale" },
-  { id: "learnings", label: "What I learned" },
-];
 
 function formatStatus(status: ProjectStatus): string {
   return status
@@ -28,7 +20,7 @@ function formatStatus(status: ProjectStatus): string {
 }
 
 export function generateStaticParams() {
-  return projects.map((p) => ({ slug: p.slug }));
+  return getAllProjects().map((p) => ({ slug: p.slug }));
 }
 
 type Params = Promise<{ slug: string }>;
@@ -74,8 +66,13 @@ export default async function ProjectCaseStudyPage({
   const project = getProjectBySlug(slug);
   if (!project) notFound();
 
-  const { caseStudy, links } = project;
+  const { links } = project;
   const hasLinks = Boolean(links?.repo || links?.demo);
+
+  const toc = extractToc(project.body);
+  const tocSections: TocSection[] = toc
+    .filter((entry) => entry.level === 2)
+    .map((entry) => ({ id: entry.id, label: entry.label }));
 
   return (
     <Container variant="wide" className="py-12 sm:py-16">
@@ -94,87 +91,9 @@ export default async function ProjectCaseStudyPage({
             </p>
           </header>
 
-          {caseStudy ? (
-            <div className="space-y-12">
-              <section id="problem" className="scroll-mt-24">
-                <h2 className="mb-4 text-xl font-bold tracking-tight">Problem</h2>
-                <p className="leading-relaxed text-secondary">{caseStudy.problem}</p>
-              </section>
-
-              <section id="architecture" className="scroll-mt-24">
-                <h2 className="mb-4 text-xl font-bold tracking-tight">Architecture</h2>
-                <p className="whitespace-pre-line leading-relaxed text-secondary">
-                  {caseStudy.architecture}
-                </p>
-              </section>
-
-              <section id="decisions" className="scroll-mt-24">
-                <h2 className="mb-4 text-xl font-bold tracking-tight">
-                  Key technical decisions
-                </h2>
-                <ul className="flex flex-col gap-3">
-                  {caseStudy.decisions.map((decision) => (
-                    <li
-                      key={decision}
-                      className="relative pl-4 leading-relaxed text-secondary before:absolute before:left-0 before:top-3 before:h-px before:w-2 before:bg-border"
-                    >
-                      {decision}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-
-              <section id="stack-rationale" className="scroll-mt-24">
-                <h2 className="mb-4 text-xl font-bold tracking-tight">Stack rationale</h2>
-                <p className="leading-relaxed text-secondary">{caseStudy.rationale}</p>
-              </section>
-
-              <section id="learnings" className="scroll-mt-24">
-                <h2 className="mb-4 text-xl font-bold tracking-tight">What I learned</h2>
-                <p className="leading-relaxed text-secondary">{caseStudy.learnings}</p>
-              </section>
-            </div>
-          ) : (
-            <Card>
-              <p className="leading-relaxed text-secondary">
-                Case study coming soon — a full write-up will be published here.
-                {hasLinks ? (
-                  <>
-                    {" "}
-                    In the meantime, check the
-                    {links?.repo ? (
-                      <>
-                        {" "}
-                        <a
-                          href={links.repo}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-accent hover:underline"
-                        >
-                          repo
-                        </a>
-                      </>
-                    ) : null}
-                    {links?.repo && links?.demo ? " /" : null}
-                    {links?.demo ? (
-                      <>
-                        {" "}
-                        <a
-                          href={links.demo}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-accent hover:underline"
-                        >
-                          live demo
-                        </a>
-                      </>
-                    ) : null}
-                    .
-                  </>
-                ) : null}
-              </p>
-            </Card>
-          )}
+          <div>
+            <MDXContent source={project.body} />
+          </div>
 
           <div className="mt-12 border-t border-border pt-6">
             <Link
@@ -224,7 +143,9 @@ export default async function ProjectCaseStudyPage({
                 </div>
               </SidebarBlock>
             ) : null}
-            {caseStudy ? <TableOfContents sections={CASE_STUDY_SECTIONS} /> : null}
+            {tocSections.length > 0 ? (
+              <TableOfContents sections={tocSections} />
+            ) : null}
           </div>
         </aside>
       </div>

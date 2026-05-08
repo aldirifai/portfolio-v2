@@ -1,0 +1,38 @@
+---
+title: "Why I'm writing again"
+description: "Notes on starting a writing habit alongside a busy build cadence — what I want this corner of the internet to be."
+date: "2026-05-09"
+tags: ["meta", "writing"]
+draft: false
+---
+
+I shipped portfolios and side projects for years without writing about any of them in public. The work happened in commits, in DMs to clients, sometimes in a Notion doc that no one else read. Over the last year, that started to feel like waste — like throwing away half of what I'd actually learned.
+
+So I'm starting this blog as a deliberate counterweight. Not a daily journal, not a content marketing funnel — just notes on what I'm building and what I'm learning. Mostly backend things: Laravel patterns I keep coming back to, FastAPI architecture decisions for [Fintrack](/projects/fintrack), the cryptography I'm sweating over for the password manager. Some posts will be short. Some will be long. I'm not optimizing for either.
+
+The first concrete thing I want to write about is how I'm structuring the AI agent layer of Fintrack. There's a small but specific design choice — where the LLM call sits in the request lifecycle — that I've now gotten wrong twice in slightly different ways. Worth a post once the third version proves itself in production.
+
+## Why this stack
+
+I rebuilt the portfolio on **Next.js 16, Tailwind v3, MDX**, self-hosted on a VPS. A few principles drove that:
+
+- **Self-hosted, because I want to control my own deployment.** I run Inastex and Fintrack on the same kind of stack. Vercel is great; I just don't need it for this.
+- **MDX, because I want code blocks and custom components to live next to prose.** A blog about backend systems without inline diagrams or callouts is a worse blog.
+- **Static-first, because performance is a feature.** Every page on this site is prerendered. The only client JavaScript is the theme toggle and a small intersection observer for the table of contents.
+
+A small piece of the build wires up draft handling — drafts are visible in development and stripped from production:
+
+```ts
+export function isVisiblePost(post: Post): boolean {
+  if (process.env.NODE_ENV === "production" && post.draft) {
+    return false;
+  }
+  return true;
+}
+```
+
+<Callout type="tip">
+  This very post is rendered through the same MDX pipeline that powers project case studies. The custom `<Callout />` you're reading right now lives in `src/components/content/MDXComponents.tsx`.
+</Callout>
+
+More to come. If you want to follow along, the [RSS feed](/feed.xml) is the most reliable way.

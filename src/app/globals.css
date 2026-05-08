@@ -41,3 +41,47 @@
     color: var(--accent-fg);
   }
 }
+
+@layer components {
+  /* rehype-pretty-code dual theme — Shiki emits inline custom properties for both themes;
+     these rules pick which one applies based on the active class on <html>. */
+  .shiki,
+  .shiki span {
+    color: var(--shiki-light);
+    background-color: var(--shiki-light-bg);
+  }
+
+  html.dark .shiki,
+  html.dark .shiki span {
+    color: var(--shiki-dark);
+    background-color: var(--shiki-dark-bg);
+  }
+
+  /* Highlighted lines / words from rehype-pretty-code */
+  [data-highlighted-line] {
+    background-color: rgb(255 255 255 / 0.05);
+    border-left: 2px solid var(--accent);
+    padding-left: 0.75rem;
+    margin-left: -1rem;
+  }
+
+  [data-highlighted-chars] {
+    background-color: rgb(255 255 255 / 0.08);
+    border-radius: 0.25rem;
+    padding: 0 0.25rem;
+  }
+
+  /* Line numbers (when enabled in MDX with showLineNumbers) */
+  code[data-line-numbers] {
+    counter-reset: line;
+  }
+  code[data-line-numbers] > [data-line]::before {
+    counter-increment: line;
+    content: counter(line);
+    display: inline-block;
+    width: 1.5rem;
+    margin-right: 1rem;
+    text-align: right;
+    color: var(--text-muted);
+  }
+}

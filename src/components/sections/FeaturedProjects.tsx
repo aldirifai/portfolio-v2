@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Container } from "@/components/layout/Container";
 import { ProjectCard } from "@/components/content/ProjectCard";
 import { FadeIn } from "@/components/ui/FadeIn";
-import { getFeaturedProjects } from "@/lib/data/projects";
+import { getFeaturedProjects } from "@/lib/mdx";
 
 export function FeaturedProjects() {
   const projects = getFeaturedProjects(3);

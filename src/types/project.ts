@@ -11,14 +11,6 @@ export type ProjectLinks = {
   relatedPosts?: string[];
 };
 
-export type ProjectCaseStudy = {
-  problem: string;
-  architecture: string;
-  decisions: string[];
-  rationale: string;
-  learnings: string;
-};
-
 export type Project = {
   slug: string;
   title: string;
@@ -30,5 +22,4 @@ export type Project = {
   featured: boolean;
   coverImage?: string;
   links?: ProjectLinks;
-  caseStudy?: ProjectCaseStudy;
 };

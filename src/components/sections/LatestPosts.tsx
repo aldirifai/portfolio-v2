@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Container } from "@/components/layout/Container";
 import { ArticleCard } from "@/components/content/ArticleCard";
 import { FadeIn } from "@/components/ui/FadeIn";
-import { getLatestPosts } from "@/lib/data/posts";
+import { getLatestPosts } from "@/lib/mdx";
 
 export function LatestPosts() {
   const posts = getLatestPosts(3);

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Container } from "@/components/layout/Container";
 import { ProjectCard } from "@/components/content/ProjectCard";
 import { FadeIn } from "@/components/ui/FadeIn";
-import { projects } from "@/lib/data/projects";
+import { getAllProjects } from "@/lib/mdx";
 
 export const metadata: Metadata = {
   title: "Projects",
@@ -11,8 +11,9 @@ export const metadata: Metadata = {
 };
 
 export default function ProjectsPage() {
-  const featured = projects.filter((p) => p.featured);
-  const others = projects.filter((p) => !p.featured);
+  const all = getAllProjects();
+  const featured = all.filter((p) => p.featured);
+  const others = all.filter((p) => !p.featured);
 
   return (
     <Container variant="wide" className="py-12 sm:py-16">

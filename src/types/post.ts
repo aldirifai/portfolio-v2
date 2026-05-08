@@ -5,4 +5,5 @@ export type Post = {
   date: string;
   readingTime?: string;
   tags?: string[];
+  draft?: boolean;
 };
