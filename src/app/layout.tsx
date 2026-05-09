@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { SITE_URL } from "@/lib/env";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -17,10 +18,8 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://aldirifai.com";
-
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Muhamad Aldi Rifai — Senior Backend Engineer",
     template: "%s — Aldi Rifai",
@@ -29,15 +28,39 @@ export const metadata: Metadata = {
     "Senior backend engineer with 5+ years building production systems in Laravel, expanding into Python, Go, and Rust. Indonesia-based, open to remote roles.",
   authors: [{ name: "Muhamad Aldi Rifai" }],
   creator: "Muhamad Aldi Rifai",
+  alternates: {
+    canonical: "/",
+    types: {
+      "application/rss+xml": `${SITE_URL}/feed.xml`,
+    },
+  },
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: siteUrl,
+    url: SITE_URL,
     siteName: "aldirifai.com",
+    images: [
+      {
+        url: `/api/og?title=${encodeURIComponent("Muhamad Aldi Rifai")}&subtitle=${encodeURIComponent("Senior Backend Engineer — Laravel, FastAPI, Go, Rust")}`,
+        width: 1200,
+        height: 630,
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     creator: "@aldirifai1999",
+    site: "@aldirifai1999",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
 };
 

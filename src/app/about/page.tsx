@@ -3,6 +3,7 @@ import { Container } from "@/components/layout/Container";
 import { ExperienceTimeline } from "@/components/sections/ExperienceTimeline";
 import { SkillsGrid } from "@/components/sections/SkillsGrid";
 import { FadeIn } from "@/components/ui/FadeIn";
+import { PersonSchema } from "@/components/seo/PersonSchema";
 
 export const metadata: Metadata = {
   title: "About",
@@ -13,6 +14,7 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <>
+      <PersonSchema />
       <Container variant="content" className="pt-16 sm:pt-24">
         <FadeIn>
           <p className="font-mono text-xs text-secondary">about</p>

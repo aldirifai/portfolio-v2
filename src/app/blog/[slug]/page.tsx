@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Container } from "@/components/layout/Container";
 import { MDXContent } from "@/components/content/MDXContent";
 import { TableOfContents, type TocSection } from "@/components/content/TableOfContents";
+import { ArticleSchema } from "@/components/seo/ArticleSchema";
 import { extractToc, getAllPosts, getPostBySlug } from "@/lib/mdx";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://aldirifai.com";
@@ -76,6 +77,7 @@ export default async function BlogPostPage({
 
   return (
     <Container variant="wide" className="py-12 sm:py-16">
+      <ArticleSchema post={post} />
       <div className="lg:grid lg:grid-cols-[1fr_240px] lg:gap-12">
         <article className="min-w-0">
           <header className="mb-12 space-y-3">

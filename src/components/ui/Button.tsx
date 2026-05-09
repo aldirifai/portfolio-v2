@@ -11,6 +11,7 @@ type ButtonProps = {
   className?: string;
   type?: "button" | "submit" | "reset";
   onClick?: () => void;
+  disabled?: boolean;
   "aria-label"?: string;
 };
 
@@ -32,6 +33,7 @@ export function Button({
   className,
   type = "button",
   onClick,
+  disabled,
   "aria-label": ariaLabel,
 }: ButtonProps) {
   const classes = cn(baseClasses, variantClasses[variant], className);
@@ -69,6 +71,7 @@ export function Button({
       type={type}
       className={classes}
       onClick={onClick}
+      disabled={disabled}
       aria-label={ariaLabel}
     >
       {children}

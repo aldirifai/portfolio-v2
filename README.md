@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# aldirifai.com
 
-## Getting Started
+Personal portfolio of Muhamad Aldi Rifai — senior backend engineer.
 
-First, run the development server:
+**Stack:** Next.js 16 (App Router) · TypeScript · Tailwind CSS v3 · MDX
+**Deployment:** Self-hosted on a VPS via Docker + Nginx + Let's Encrypt
+**Spec:** see [`PORTFOLIO_BLUEPRINT.md`](./PORTFOLIO_BLUEPRINT.md)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Local development
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+1. Install dependencies (requires Node 20+ and pnpm):
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+   ```bash
+   pnpm install
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. Copy env template and fill in your secrets:
 
-## Learn More
+   ```bash
+   cp .env.example .env.local
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+   The contact form needs a [Resend API key](https://resend.com/api-keys) at
+   minimum. Other variables have safe defaults for local dev.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3. Start the dev server:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   ```bash
+   pnpm dev
+   ```
 
-## Deploy on Vercel
+   Open [http://localhost:3000](http://localhost:3000).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Scripts
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Command            | What it does                                         |
+| ------------------ | ---------------------------------------------------- |
+| `pnpm dev`         | Start the Next.js dev server (Turbopack)             |
+| `pnpm build`       | Production build (Next.js + Shiki MDX compilation)   |
+| `pnpm start`       | Run the production server (after `build`)            |
+| `pnpm lint`        | ESLint with auto-fix                                 |
+| `pnpm format`      | Prettier across the repo                             |
+| `pnpm type-check`  | `tsc --noEmit`                                       |
+
+## Content
+
+Posts live in `content/posts/*.mdx`, project case studies in
+`content/projects/*.mdx`. Frontmatter is validated with Zod at build time —
+invalid frontmatter fails the build loud.
+
+Drafts (`draft: true` in post frontmatter) are visible in `pnpm dev` but
+stripped from production builds.
+
+## Deployment
+
+See `PORTFOLIO_BLUEPRINT.md` Section 11 / Phase 7 for the full self-host
+runbook (Dockerfile, docker-compose, Nginx, GitHub Actions CI/CD,
+Let's Encrypt, DNS).
+
+## License
+
+MIT — see `LICENSE`.

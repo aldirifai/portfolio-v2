@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { MDXContent } from "@/components/content/MDXContent";
 import { TableOfContents, type TocSection } from "@/components/content/TableOfContents";
+import { ProjectSchema } from "@/components/seo/ProjectSchema";
 import { extractToc, getAllProjects, getProjectBySlug } from "@/lib/mdx";
 import type { ProjectStatus } from "@/types/project";
 
@@ -76,6 +77,7 @@ export default async function ProjectCaseStudyPage({
 
   return (
     <Container variant="wide" className="py-12 sm:py-16">
+      <ProjectSchema project={project} />
       <div className="lg:grid lg:grid-cols-[1fr_240px] lg:gap-12">
         <article className="min-w-0">
           <header className="mb-12 space-y-3">
