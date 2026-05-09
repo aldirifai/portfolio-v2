@@ -385,6 +385,21 @@ src/app/
 └── projects/[slug]/loading.tsx          # project-shaped skeleton (sidebar + content)
 ```
 
+Deploy artifacts live in `deploy/` and root-level Docker files:
+
+```
+.
+├── Dockerfile                           # multi-stage: deps → builder → runner (node:20-alpine)
+├── docker-compose.yml                   # 127.0.0.1:3000, healthcheck, log rotation
+├── .dockerignore
+├── .github/workflows/deploy.yml         # CI: SSH to VPS, rebuild, healthcheck
+├── scripts/generate-icons.mjs           # `pnpm icons` SVG → PNG via sharp
+└── deploy/
+    ├── README.md                        # comprehensive runbook (bootstrap → first deploy)
+    ├── nginx/aldirifai.com.conf         # reverse proxy + TLS + redirects + caching
+    └── .env.production.template         # template for /srv/portfolio/.env.production
+```
+
 ---
 
 ## 7. MDX Blog Setup
@@ -817,24 +832,57 @@ name: Deploy
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      # Warms a runner-side Next.js cache. Useful when we eventually move
+      # the build to GH Actions and push images to ghcr.io (see deploy
+      # README "Future migration option"). Today the build still runs on
+      # the VPS, so this cache is precautionary.
+      - uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextcache-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('**/*.{ts,tsx,js,jsx}') }}
+          restore-keys: |
+            ${{ runner.os }}-nextcache-${{ hashFiles('pnpm-lock.yaml') }}-
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT || 22 }}
+          script_stop: true
           script: |
+            set -euo pipefail
             cd /srv/portfolio
             git fetch --all
             git reset --hard origin/main
             docker compose build
             docker compose up -d
             docker image prune -f
+            sleep 5
+            curl -fsS http://localhost:3000/api/health
 ```
 
 ### One-time VPS bootstrap (run as root or sudo)
