@@ -1,0 +1,25 @@
+node_modules
+.next
+.git
+.github
+content/.cache
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Local env / secrets
+.env
+.env.local
+.env.development
+.env.production
+.env*.local
+
+# Project-level docs and tooling not needed in image
+README.md
+PORTFOLIO_BLUEPRINT.md
+deploy
+.vscode
+.idea
+.DS_Store
