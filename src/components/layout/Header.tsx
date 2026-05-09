@@ -2,6 +2,9 @@ import Link from "next/link";
 import { Container } from "@/components/layout/Container";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
+const navLinkClass =
+  "rounded-sm text-secondary transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-bg";
+
 export function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-bg/80 backdrop-blur-md">
@@ -9,34 +12,23 @@ export function Header() {
         <div className="flex h-14 items-center justify-between">
           <Link
             href="/"
-            className="font-mono text-sm font-bold tracking-wider text-primary transition-colors hover:text-accent"
+            aria-label="Aldi Rifai — Home"
+            className="rounded-sm font-mono text-sm font-bold tracking-wider text-primary transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-bg"
           >
             AR
           </Link>
           <div className="flex items-center gap-4 sm:gap-6">
-            <nav className="flex items-center gap-4 sm:gap-6 text-sm">
-              <Link
-                href="/about"
-                className="text-secondary transition-colors hover:text-primary"
-              >
+            <nav aria-label="Primary" className="flex items-center gap-4 text-sm sm:gap-6">
+              <Link href="/about" className={navLinkClass}>
                 About
               </Link>
-              <Link
-                href="/projects"
-                className="text-secondary transition-colors hover:text-primary"
-              >
+              <Link href="/projects" className={navLinkClass}>
                 Projects
               </Link>
-              <Link
-                href="/blog"
-                className="text-secondary transition-colors hover:text-primary"
-              >
+              <Link href="/blog" className={navLinkClass}>
                 Blog
               </Link>
-              <Link
-                href="/contact"
-                className="text-secondary transition-colors hover:text-primary"
-              >
+              <Link href="/contact" className={navLinkClass}>
                 Contact
               </Link>
             </nav>

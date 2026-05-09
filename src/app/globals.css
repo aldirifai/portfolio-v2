@@ -20,7 +20,8 @@
     --border: #262626;
     --text-primary: #fafafa;
     --text-secondary: #a1a1aa;
-    --text-muted: #71717a;
+    /* bumped from #71717a to clear WCAG AA (4.5:1) on bg-elevated #111. */
+    --text-muted: #8a8a93;
     --accent: #f59e0b;
     --accent-fg: #0a0a0a;
   }
