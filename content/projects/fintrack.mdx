@@ -92,9 +92,3 @@ I didn't want to be locked into a specific LLM provider. Models change quickly �
 **Self-host discipline pays off later.** Forcing myself to fit the stack in a small VPS made me ruthless about Python worker counts, Redis memory limits, and Postgres `shared_buffers` tuning. When I started another self-hosted project later, I already had a mental model of "this is what fits, this is what doesn't" — a useful constraint to internalize.
 
 **Email is fragile but reliable.** Gmail throttles IMAP aggressively if you poll too often. The IMAP worker now uses exponential backoff and IDLE mode where supported, polls every few minutes when idle, and logs connection state to help diagnose transient issues. Slow but predictable beats fast and brittle.
-
-## Links
-
-- **Repo:** Private — happy to walk through architecture and design decisions in a call.
-- **Live:** [fintrack.aldirifai.com](https://fintrack.aldirifai.com) (private, account required)
-- **Related writing:** A longer post on the architecture is in the works.
