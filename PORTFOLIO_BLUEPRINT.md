@@ -360,15 +360,30 @@ src/components/
 │   ├── MDXComponents.tsx    # typography map (h2/h3/p/a/code/pre/...) + Callout, ComingSoon, Stack
 │   ├── MDXContent.tsx       # next-mdx-remote/rsc renderer wrapper
 │   └── TableOfContents.tsx  # auto-extracts h2 ids from MDX content via extractToc()
-└── seo/
-    ├── PersonSchema.tsx     # JSON-LD Person (rendered on / and /about)
-    ├── ProjectSchema.tsx    # JSON-LD CreativeWork per project
-    └── ArticleSchema.tsx    # JSON-LD BlogPosting per post
+├── seo/
+│   ├── PersonSchema.tsx     # JSON-LD Person (rendered on / and /about)
+│   ├── ProjectSchema.tsx    # JSON-LD CreativeWork per project
+│   └── ArticleSchema.tsx    # JSON-LD BlogPosting per post
+└── form/
+    ├── ContactForm.tsx          # client form (RHF + zod-resolver)
+    └── ContactFormSkeleton.tsx  # placeholder shown during dynamic load
 ```
 
-Note: `form/ContactForm.tsx` from earlier drafts wasn't extracted as a
-separate primitive — Phase 5 keeps the form inline in `app/contact/page.tsx`
-since it's the only form in the app. Extract if a second form appears.
+Phase 7a moves the contact form into its own client component and lazy-loads
+it via `next/dynamic({ ssr: false })` from `app/contact/ContactFormLazy.tsx`,
+so React-Hook-Form ships in a separate async chunk instead of the initial
+`/contact` bundle. The page itself stays a server component (metadata at
+page level, no `layout.tsx` wrapper needed).
+
+App-level loading and error UI live alongside the routes:
+
+```
+src/app/
+├── loading.tsx                          # global skeleton
+├── error.tsx                            # error boundary ("use client")
+├── blog/[slug]/loading.tsx              # post-shaped skeleton
+└── projects/[slug]/loading.tsx          # project-shaped skeleton (sidebar + content)
+```
 
 ---
 
@@ -431,8 +446,8 @@ export default withMDX(nextConfig);
 - [x] Sitemap via Next.js native `app/sitemap.ts`
 - [x] robots.txt via Next.js native `app/robots.ts`
 - [x] RSS feed at `/feed.xml`
-- [x] Favicon set (32 via `app/icon.tsx`, 180 via `app/apple-icon.tsx`, 192 + 512 via `app/icon{1,2}.tsx`, `app/manifest.ts` with theme-color)
-- [ ] Lighthouse > 95 on all four axes — Phase 7 audit
+- [x] Favicon set (Phase 7a: pre-generated PNG via `pnpm icons` → `app/icon.png` 32, `app/apple-icon.png` 180, `public/icon-{192,512}.png` for PWA, `app/manifest.ts` with theme-color)
+- [ ] Lighthouse > 95 on all four axes — pending manual run in Phase 7a checklist
 - [x] No layout shift on theme toggle (CSS variables, not class swap)
 - [x] Preload critical fonts (`next/font` does this for Geist Sans/Mono)
 - [ ] All images via `next/image` with explicit width/height — currently no real images in content; revisit when project covers land
@@ -652,15 +667,21 @@ git rm yarn.lock
 ```json
 {
   "scripts": {
-    "dev": "next dev --turbo",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint --fix",
+    "lint": "eslint --fix",
     "format": "prettier --write .",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "icons": "node scripts/generate-icons.mjs"
   }
 }
 ```
+
+`pnpm icons` rasterizes `scripts/generate-icons.mjs` (sharp-based SVG → PNG)
+into `src/app/icon.png` (32), `src/app/apple-icon.png` (180), and
+`public/icon-{192,512}.png` for the PWA manifest. Run it whenever the
+monogram changes; otherwise these are static, committed files.
 
 ## Appendix C — Inspiration (study before building)
 
