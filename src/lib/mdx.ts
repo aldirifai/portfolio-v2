@@ -141,6 +141,9 @@ export function getFeaturedProjects(limit?: number): Project[] {
 
 // --- TOC -------------------------------------------------------------------
 
+// Footer-style headings that belong with sidebar metadata, not the in-page TOC.
+const FOOTER_HEADING_PATTERN = /^(Links|Related|References|See also|Further reading)$/i;
+
 export function extractToc(content: string): TocEntry[] {
   const lines = content.split("\n");
   const slugger = new GithubSlugger();
@@ -157,6 +160,7 @@ export function extractToc(content: string): TocEntry[] {
     const level = match[1].length === 2 ? 2 : 3;
     const label = match[2].replace(/[*_`]/g, "").trim();
     if (!label) continue;
+    if (FOOTER_HEADING_PATTERN.test(label)) continue;
     const id = slugger.slug(label);
     entries.push({ id, label, level });
   }
