@@ -6,6 +6,95 @@ year: "2025–2026"
 status: in-progress
 role: Solo builder
 featured: true
+links:
+  demo: https://fintrack.aldirifai.com
 ---
 
-<ComingSoon />
+## Problem
+
+Tracking personal finances in Indonesia is its own special nightmare. I have accounts at four banks (BCA, BNI, Mandiri, BRI) and four e-wallets (GoPay, OVO, Dana, ShopeePay), each with their own app, their own notification format, and zero willingness to talk to each other.
+
+Existing apps like Money Lover want me to log transactions manually or to grant SMS-reading permissions that I'd rather not give. International apps don't speak Indonesian transaction patterns — they don't recognize that "DEBIT GOPAY 50.000 NMID..." means a purchase via GoPay rather than a deposit.
+
+What I actually wanted was simpler: tell my phone "tadi makan siang 45 ribu pakai GoPay" and have something figure out the category, the merchant pattern, the budget impact, and file it neatly. Plus a way to read e-wallet receipt emails automatically since e-wallets here don't expose consumer APIs.
+
+Fintrack is the first module of a larger personal AI agent system I'm building — the finance module — and the one with the clearest immediate ROI. Telegram is the input surface because I already chat about money there. An LLM does the categorization. A daily summary lands in my chat at 10 PM with what I spent and what I might want to think about.
+
+## Architecture
+
+The system is small but has more moving parts than a typical CRUD app, so here it is laid out plainly.
+
+<Stack>
+   ┌──────────────┐                       ┌─────────────────┐
+   │ Telegram Bot │ ───────┐    ┌──────── │ Gmail IMAP poll │
+   └──────────────┘        │    │         └─────────────────┘
+                           ▼    ▼
+                       ┌──────────────────┐       ┌────────────┐
+                       │     FastAPI      │ ────▶ │ OpenRouter │
+                       │   (orchestrator) │ ◀──── │ (LLM API)  │
+                       └──────────────────┘       └────────────┘
+                            │     │     │
+                  ┌─────────┘     │     └─────────┐
+                  ▼               ▼               ▼
+            ┌──────────┐    ┌──────────┐    ┌──────────┐
+            │ Postgres │    │  Redis   │    │  MinIO   │
+            │ (records)│    │ (queue)  │    │(receipts)│
+            └──────────┘    └──────────┘    └──────────┘
+                  ▲
+                  │
+            ┌──────────┐
+            │ Next.js  │
+            │   PWA    │
+            └──────────┘
+</Stack>
+
+Inputs come from two sources: a Telegram bot for natural-language entries ("kopi 35rb gopay") and a Gmail IMAP poller that watches for e-wallet receipt emails. Both feed FastAPI, which dispatches structured-extraction requests to OpenRouter and writes the result to PostgreSQL.
+
+Redis handles task queues for IMAP polling and the daily summary cron. MinIO stores receipt screenshots and PDF attachments — useful when I want to reconcile a mystery expense weeks later. The Next.js PWA is the read-side: charts, monthly breakdowns, search, and edit/correct flows for when the LLM gets a category wrong.
+
+Everything runs on a single IDCloudHost VPS, orchestrated with Docker Compose.
+
+## Key Decisions
+
+**1. Telegram as the primary input surface.**
+Most finance apps lose to friction. Opening an app, finding the right tab, choosing the right category — by the time I do all that, the transaction is forgotten. Telegram is already open on my phone for chatting with friends. Adding "Fintrack Bot" as just another chat means logging a transaction is identical to texting a friend "lunch 45rb gopay" — zero new behavior to learn.
+
+**2. LLM for categorization, deterministic code for amounts.**
+I learned this the hard way: never trust an LLM to compute money. The pipeline always parses the amount with a regex (handles `45rb`, `45.000`, `Rp 45,000`, `45k`, `IDR 45000`) before showing the structured row to the LLM. The LLM gets the raw text and the parsed amount; it returns category, merchant guess, and notes — but the source of truth for the number is always the code path.
+
+**3. Email IMAP over web scraping or unofficial APIs.**
+Indonesian e-wallets don't expose consumer APIs. Some communities have built unofficial scrapers, but they break when providers update their UIs and sometimes drift into terms-of-service grey zones. Email receipts are stable, official, and IMAP is a 40-year-old protocol that isn't going anywhere. The downside is latency — receipts can lag a few minutes — but for personal finance that's fine.
+
+**4. Self-host on a small VPS instead of managed cloud.**
+Cost matters: this is a personal project that doesn't generate revenue. A small VPS at IDCloudHost runs me less than a streaming subscription. Bonus: my financial data stays in Indonesia and never leaves a server I don't control. The downside is operational work (SSL, monitoring, upgrades), but I was already maintaining a similar stack for other projects, so the marginal effort is small.
+
+**5. OpenRouter as the LLM gateway.**
+I didn't want to be locked into a specific LLM provider. Models change quickly — what's best today might be expensive tomorrow, and what's expensive today might be free in six months. OpenRouter lets me swap between Claude, GPT-4, Gemini, Llama, and others by changing one config line. For categorization (a forgiving task), I default to whichever has acceptable quality at the lowest cost.
+
+## Stack Rationale
+
+**Backend: FastAPI (Python).** The work is mostly async I/O — IMAP polls, webhooks, LLM calls — and FastAPI's async-first design fits naturally. Pydantic gives schema validation that doubles as documentation. Python's ecosystem is rich for what I need: `imapclient`, `python-telegram-bot`, parsing libraries, and the scientific stack for any future analytics.
+
+**Frontend: Next.js PWA.** I wanted offline read access (looking at last month's spend on a flight). PWA installability lets me pin it to my home screen alongside the bank apps. Next.js was already in my stack, so no new framework to learn. Server components let me push expensive aggregations to the server and ship a small client bundle.
+
+**PostgreSQL 16.** Money requires transactional safety. JSON columns let me store LLM-extracted metadata flexibly while keeping the canonical numeric fields in proper columns. Date range queries are fast. This is the boring, correct choice.
+
+**Redis + MinIO.** Redis runs the task queue for IMAP polling and a small dedup cache for "did I already process this email message-id". MinIO is S3-compatible local storage for receipt attachments — same API as AWS S3, so if I ever migrate the project elsewhere, the storage layer doesn't change.
+
+**Docker Compose.** The whole stack — Postgres, Redis, MinIO, FastAPI, the PWA, and the IMAP worker — comes up with a single command. Same setup runs on my laptop for development as on the VPS. New machine, fresh checkout, `docker compose up`, done.
+
+## Learnings
+
+**LLMs need narrow swim lanes.** The first version asked the LLM to do too much: "given this email, extract amount, merchant, date, category, and any other metadata." Results were inconsistent and occasionally hallucinated amounts. The fix was to do everything I could deterministically (parse amount, parse date, identify e-wallet provider from sender domain) before showing the LLM only what it's actually good at: free-text classification and merchant inference.
+
+**Indonesian transaction language is a vibe.** "Rb" and "k" both mean thousand. "Tadi" means it just happened — but exactly when is fuzzy. "Kemarin malem" can mean last night or any recent past evening. I started with rigid time parsing and ended up letting the LLM interpret relative time references after categorization is done.
+
+**Self-host discipline pays off later.** Forcing myself to fit the stack in a small VPS made me ruthless about Python worker counts, Redis memory limits, and Postgres `shared_buffers` tuning. When I started another self-hosted project later, I already had a mental model of "this is what fits, this is what doesn't" — a useful constraint to internalize.
+
+**Email is fragile but reliable.** Gmail throttles IMAP aggressively if you poll too often. The IMAP worker now uses exponential backoff and IDLE mode where supported, polls every few minutes when idle, and logs connection state to help diagnose transient issues. Slow but predictable beats fast and brittle.
+
+## Links
+
+- **Repo:** Private — happy to walk through architecture and design decisions in a call.
+- **Live:** [fintrack.aldirifai.com](https://fintrack.aldirifai.com) (private, account required)
+- **Related writing:** A longer post on the architecture is in the works.
