@@ -360,9 +360,15 @@ src/components/
 │   ├── MDXComponents.tsx    # typography map (h2/h3/p/a/code/pre/...) + Callout, ComingSoon, Stack
 │   ├── MDXContent.tsx       # next-mdx-remote/rsc renderer wrapper
 │   └── TableOfContents.tsx  # auto-extracts h2 ids from MDX content via extractToc()
-└── form/
-    └── ContactForm.tsx
+└── seo/
+    ├── PersonSchema.tsx     # JSON-LD Person (rendered on / and /about)
+    ├── ProjectSchema.tsx    # JSON-LD CreativeWork per project
+    └── ArticleSchema.tsx    # JSON-LD BlogPosting per post
 ```
+
+Note: `form/ContactForm.tsx` from earlier drafts wasn't extracted as a
+separate primitive — Phase 5 keeps the form inline in `app/contact/page.tsx`
+since it's the only form in the app. Extract if a second form appears.
 
 ---
 
@@ -416,20 +422,20 @@ export default withMDX(nextConfig);
 
 ## 8. SEO & Performance Checklist
 
-- [ ] JSON-LD `Person` schema on `/` and `/about`
-- [ ] JSON-LD `CreativeWork` per project
-- [ ] JSON-LD `BlogPosting` per article
-- [ ] Dynamic OG images via `next/og` (built-in, Node runtime) at `/api/og` (template: name, title, accent color)
-- [ ] Per-page meta description (no generic copies)
-- [ ] Canonical URLs on every page
-- [ ] Sitemap via Next.js native `app/sitemap.ts`
-- [ ] robots.txt via Next.js native `app/robots.ts`
-- [ ] RSS feed at `/feed.xml`
-- [ ] Favicon set (16, 32, 180, manifest, theme-color)
-- [ ] Lighthouse > 95 on all four axes
-- [ ] No layout shift on theme toggle (CSS variables, not class swap)
-- [ ] Preload critical fonts
-- [ ] All images via `next/image` with explicit width/height
+- [x] JSON-LD `Person` schema on `/` and `/about`
+- [x] JSON-LD `CreativeWork` per project
+- [x] JSON-LD `BlogPosting` per article
+- [x] Dynamic OG images via `next/og` (built-in, Node runtime) at `/api/og` (template: name, title, accent color)
+- [x] Per-page meta description (no generic copies)
+- [x] Canonical URLs on every page (root layout + per-page `metadata.alternates`)
+- [x] Sitemap via Next.js native `app/sitemap.ts`
+- [x] robots.txt via Next.js native `app/robots.ts`
+- [x] RSS feed at `/feed.xml`
+- [x] Favicon set (32 via `app/icon.tsx`, 180 via `app/apple-icon.tsx`, 192 + 512 via `app/icon{1,2}.tsx`, `app/manifest.ts` with theme-color)
+- [ ] Lighthouse > 95 on all four axes — Phase 7 audit
+- [x] No layout shift on theme toggle (CSS variables, not class swap)
+- [x] Preload critical fonts (`next/font` does this for Geist Sans/Mono)
+- [ ] All images via `next/image` with explicit width/height — currently no real images in content; revisit when project covers land
 
 ---
 
