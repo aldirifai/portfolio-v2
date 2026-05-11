@@ -2,68 +2,83 @@ import type { Metadata } from "next";
 import { Container } from "@/components/layout/Container";
 import { ProjectCard } from "@/components/content/ProjectCard";
 import { FadeIn } from "@/components/ui/FadeIn";
+import { Aurora } from "@/components/ui/Aurora";
 import { getAllProjects } from "@/lib/mdx";
 
 export const metadata: Metadata = {
   title: "Projects",
   description:
-    "Selected work across Laravel, FastAPI, Go, and Rust — fintech, agricultural systems, AI agents, and a zero-knowledge password manager. Production projects and ongoing personal builds.",
+    "Selected work across Laravel, FastAPI, Next.js, and AI workflows — Indonesian-market SaaS, e-commerce, and personal AI agents.",
 };
+
+const ORDER: string[] = [
+  "fintrack",
+  "klipin",
+  "tanyaai",
+  "landingklinik-stack",
+  "leadflow",
+  "levenshop",
+];
 
 export default function ProjectsPage() {
   const all = getAllProjects();
-  const featured = all.filter((p) => p.featured);
-  const others = all.filter((p) => !p.featured);
+  const sorted = [...all].sort(
+    (a, b) => ORDER.indexOf(a.slug) - ORDER.indexOf(b.slug),
+  );
+  const [hero, ...rest] = sorted;
 
   return (
-    <Container variant="wide" className="py-12 sm:py-16">
-      <FadeIn>
-        <header className="mb-12 max-w-content">
-          <p className="font-mono text-xs text-secondary">projects</p>
-          <h1 className="mt-4 text-balance text-4xl font-bold tracking-tight md:text-5xl">
-            Things I&apos;ve built.
-          </h1>
-          <p className="mt-6 text-balance text-lg leading-relaxed text-secondary">
-            A mix of client work, internal systems I&apos;ve shipped, and personal builds I
-            keep iterating on. Stack ranges from Laravel and FastAPI to Go and Rust.
-          </p>
-        </header>
-      </FadeIn>
-
-      <section aria-labelledby="featured-heading" className="mb-16">
+    <div className="relative">
+      <Aurora className="opacity-60" />
+      <Container variant="wide" className="relative z-10 py-16 sm:py-24">
         <FadeIn>
-          <h2 id="featured-heading" className="mb-6 text-2xl font-bold tracking-tight">
-            Featured
-          </h2>
+          <header className="mx-auto mb-12 max-w-3xl">
+            <p className="font-mono text-[11px] uppercase tracking-wider text-muted">
+              / projects
+            </p>
+            <h1 className="mt-4 text-balance text-5xl font-semibold tracking-tight sm:text-6xl">
+              Things I&apos;ve <span className="text-gradient-accent">built.</span>
+            </h1>
+            <p className="mt-6 max-w-2xl text-balance text-lg leading-relaxed text-secondary">
+              A mix of personal projects and client builds — Indonesian-market
+              SaaS, e-commerce storefronts, AI agents, and the unglamorous infra
+              that holds them together.
+            </p>
+          </header>
         </FadeIn>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {featured.map((project, index) => (
-            <FadeIn key={project.slug} delay={index * 0.08}>
-              <ProjectCard project={project} variant="featured" />
-            </FadeIn>
-          ))}
-        </div>
-      </section>
 
-      <div className="my-12 flex items-center gap-4">
-        <span className="font-mono text-xs uppercase tracking-wider text-muted">
-          More projects
-        </span>
-        <hr className="flex-1 border-t border-border" />
-      </div>
-
-      <section aria-labelledby="more-heading">
-        <h2 id="more-heading" className="sr-only">
-          More projects
-        </h2>
-        <div className="grid grid-cols-1 gap-x-8 gap-y-10 md:grid-cols-3">
-          {others.map((project, index) => (
-            <FadeIn key={project.slug} delay={index * 0.08}>
-              <ProjectCard project={project} variant="grid" />
+        {hero && (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            {/* Row 1-2: hero + 2 cards on right */}
+            <FadeIn className="lg:col-span-2 lg:row-span-2" delay={0}>
+              <ProjectCard
+                project={hero}
+                size="large"
+                className="h-full min-h-[440px]"
+              />
             </FadeIn>
-          ))}
-        </div>
-      </section>
-    </Container>
+            {rest.slice(0, 2).map((project, index) => (
+              <FadeIn key={project.slug} delay={(index + 1) * 0.06}>
+                <ProjectCard
+                  project={project}
+                  size="default"
+                  className="h-full min-h-[210px]"
+                />
+              </FadeIn>
+            ))}
+            {/* Row 3: 3 cards full width */}
+            {rest.slice(2).map((project, index) => (
+              <FadeIn key={project.slug} delay={(index + 3) * 0.06}>
+                <ProjectCard
+                  project={project}
+                  size="default"
+                  className="h-full min-h-[210px]"
+                />
+              </FadeIn>
+            ))}
+          </div>
+        )}
+      </Container>
+    </div>
   );
 }

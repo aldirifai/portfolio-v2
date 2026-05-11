@@ -52,7 +52,7 @@ jobs:
           script_stop: true
           script: |
             set -euo pipefail
-            cd /srv/portfolio
+            cd /var/www/aldirifai.com
             git fetch --all
             git reset --hard origin/main
             docker compose build

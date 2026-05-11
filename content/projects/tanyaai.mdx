@@ -1,0 +1,85 @@
+---
+title: TanyaAI
+tagline: AI customer service chatbot multi-tenant SaaS for Indonesian UMKM — Bahasa-first, WhatsApp-ready, with pgvector knowledge base
+stack: ["Laravel 13", "PostgreSQL", "pgvector", "OpenRouter", "Midtrans", "WhatsApp Business API", "Redis", "Docker"]
+year: "2025–2026"
+status: in-progress
+role: Solo builder
+featured: true
+links:
+  repo: https://github.com/aldirifai/tanyaai
+---
+
+## Problem
+
+Small Indonesian businesses (UMKM) lose customers in WhatsApp DMs at night, on weekends, and when the owner is out of pulsa. The standard advice — "hire a CS team" — doesn't fit a warung, a salon, or a single-product Shopify store doing IDR 30 juta/month in revenue.
+
+The tools that do exist are mostly built for English-first markets. They handle FAQ matching, but they don't know that "ada bunda?" is a polite Javanese greeting, "DP brapa?" is asking about down payment, and that customers often skip punctuation, capitalization, and spelling. International SaaS like Intercom or Drift charges USD 39+/seat/month — too expensive for the segment, and they don't even integrate with the channel that matters in Indonesia (WhatsApp).
+
+TanyaAI is an opinionated, Bahasa-first chatbot SaaS aimed at this segment. Owners upload their FAQ + product catalog, embed it once in a knowledge base, and the bot handles 80% of inbound DMs over WhatsApp Business and a chat widget — pricing in IDR, billed via Midtrans, hosted in Indonesia.
+
+## Architecture
+
+<Stack>
+                              ┌───────────────────────┐
+                              │   WhatsApp Business   │
+                              │       /  Widget       │
+                              └──────────┬────────────┘
+                                         │ webhook
+                                         ▼
+  ┌─────────────────┐         ┌────────────────────────┐         ┌──────────────┐
+  │  Laravel admin  │ ◀─────▶ │   Laravel 13 API       │ ──────▶ │  OpenRouter  │
+  │  (Filament)     │         │  + Filament dashboard  │ ◀────── │  (LLM proxy) │
+  └─────────────────┘         └─────────┬──────────────┘         └──────────────┘
+                                        │
+                  ┌─────────────────────┼─────────────────────┐
+                  ▼                     ▼                     ▼
+          ┌──────────────┐      ┌────────────────┐     ┌─────────────┐
+          │  PostgreSQL  │      │   pgvector     │     │    Redis    │
+          │  (tenants,   │      │  (embeddings,  │     │   (queues,  │
+          │ conversations)│     │  RAG retrieval) │    │   sessions) │
+          └──────────────┘      └────────────────┘     └─────────────┘
+                  ▲
+                  │
+          ┌──────────────┐
+          │  Midtrans    │
+          │ (subscription│
+          │   billing)   │
+          └──────────────┘
+</Stack>
+
+Each tenant has an isolated knowledge base (FAQ docs, product catalog) embedded into pgvector. Inbound messages from WhatsApp / chat widget hit a webhook, the relevant tenant context + top-K vector matches are stuffed into a prompt, and OpenRouter routes to whatever model is currently cheapest at acceptable quality. Replies stream back to the channel. Filament admin gives owners a real-time inbox, conversation transcripts, and a "human takeover" button when they want to step in. Midtrans handles subscription billing in IDR.
+
+## Key Decisions
+
+**1. Multi-tenant in a single Postgres database, row-level scoped.** Database-per-tenant would be operationally cleaner but explodes infra cost on a budget self-hosted setup. A single shared schema with `tenant_id` on every row, enforced via Eloquent global scopes, gives me 80% of the isolation at 5% of the operational overhead. Backups, migrations, and analytics are all single-database operations.
+
+**2. pgvector instead of a dedicated vector DB.** The first version used Pinecone, which was easy but added another vendor and a recurring USD bill. pgvector keeps the entire knowledge base in the same Postgres instance — one backup, one restore path, one place to debug. For tenants with under ~50K embedded chunks (which is everyone for now), pgvector with HNSW is fast enough.
+
+**3. WhatsApp Business API via Meta Cloud, not third-party gateways.** The Indonesian WhatsApp gateway market (e.g. Wablas, Fonnte) is cheaper but rides on personal numbers and has a non-trivial chance of getting banned. Meta Cloud API is more expensive per message but is the official, stable path — and SaaS users don't want to wake up to a banned bot.
+
+**4. OpenRouter as the LLM gateway.** Same reasoning as Fintrack: model markets shift fast, and locking in a single provider is bad bet management. OpenRouter lets me route different prompts to different models — cheap models for FAQ matching, frontier models for the small fraction of conversations that need real reasoning.
+
+**5. Filament for the admin UI.** Owners are not developers. They want a dashboard that looks like one, with inboxes, edit-the-FAQ forms, and conversation history. Filament gives me Resources + Forms + Tables in Laravel-native code, which means one less SPA codebase to maintain.
+
+## Stack Rationale
+
+**Laravel 13.** This is core territory — eloquent multi-tenant scoping, queues, scheduled tasks, the Filament admin, and webhook handling are all things Laravel excels at. I've shipped enough Laravel to know its sharp edges and its strengths.
+
+**PostgreSQL + pgvector.** Both transactional state (tenants, subscriptions, conversations) and vector embeddings live in the same instance. Single durable store. Migrations and tenant-scoped backups are first-class Postgres operations.
+
+**Redis.** Queue (Laravel Horizon) for async embedding ingestion and the LLM call retry path. Also session storage for the admin UI. Boring, fast, predictable.
+
+**Midtrans for billing.** The Indonesian payment standard. Bank transfer, GoPay, OVO, Dana, ShopeePay, credit card — all in one integration. Recurring subscription billing is a known sharp edge in Midtrans (it's a one-time payment processor at heart), so I'm using their tokenized recurring flow with a custom subscription state machine on my side.
+
+**Docker Compose, self-hosted on VPS.** Same as my other projects — `docker compose up` brings up Laravel, Postgres + pgvector extension, Redis, and an Nginx reverse proxy. Cheap to run, easy to clone for staging.
+
+## What I'm Learning
+
+**Bahasa Indonesia chat is heavy on context, light on syntax.** "Mau order yg kemarin tapi size L" relies on the bot knowing the recent conversation, the catalog, and the customer's last order. Pure FAQ matching fails here. The pipeline now keeps the last 6 turns plus a short conversation summary in the prompt — costs more tokens but is the difference between "useful" and "frustrating."
+
+**Tenants want to override the LLM, often.** Owners trust the bot for known-good questions but want a "always escalate to me when X" rule for high-stakes ones (price negotiation, return requests). Building a small rule engine alongside the LLM (regex + keyword routes that bypass the model) was unglamorous but moved trust forward more than any model upgrade.
+
+**Self-hosted Indonesian latency matters.** Models hosted in US regions add 250–400ms of round-trip latency on every reply, and chat feels noticeably less responsive. Where possible the gateway routes to Singapore-region inference, which trims most of that — invisible to the user, but a real quality difference.
+
+**Multi-tenant billing is its own product.** The first version had simple per-tenant subscription rows. Real customers asked for: per-message metering for low-volume plans, "pause subscription this month," refund flows, and detailed invoices for tax purposes. Each one ate a sprint. If I were starting again I'd reach for a billing primitive (Stripe Tax, Lago) earlier — even with a Midtrans payment leg.

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
-import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 
 function H2({ children, id, className, ...rest }: ComponentProps<"h2">) {
@@ -9,7 +8,7 @@ function H2({ children, id, className, ...rest }: ComponentProps<"h2">) {
     <h2
       id={id}
       className={cn(
-        "scroll-mt-24 mt-12 mb-4 text-xl font-bold tracking-tight text-primary",
+        "scroll-mt-24 mt-14 mb-5 text-2xl font-semibold tracking-tight text-primary",
         className,
       )}
       {...rest}
@@ -24,7 +23,7 @@ function H3({ children, id, className, ...rest }: ComponentProps<"h3">) {
     <h3
       id={id}
       className={cn(
-        "scroll-mt-24 mt-8 mb-3 text-lg font-semibold tracking-tight text-primary",
+        "scroll-mt-24 mt-9 mb-3 text-lg font-semibold tracking-tight text-primary",
         className,
       )}
       {...rest}
@@ -51,9 +50,23 @@ function H4({ children, id, className, ...rest }: ComponentProps<"h4">) {
 
 function P({ children, className, ...rest }: ComponentProps<"p">) {
   return (
-    <p className={cn("my-4 leading-relaxed text-secondary", className)} {...rest}>
+    <p
+      className={cn("my-5 leading-relaxed text-secondary", className)}
+      {...rest}
+    >
       {children}
     </p>
+  );
+}
+
+function Strong({ children, className, ...rest }: ComponentProps<"strong">) {
+  return (
+    <strong
+      className={cn("font-semibold text-primary", className)}
+      {...rest}
+    >
+      {children}
+    </strong>
   );
 }
 
@@ -66,7 +79,7 @@ function A({ href = "", children, className, ...rest }: ComponentProps<"a">) {
         target="_blank"
         rel="noopener noreferrer"
         className={cn(
-          "inline-flex items-center gap-1 text-accent underline-offset-4 hover:underline",
+          "inline-flex items-center gap-1 font-medium text-accent underline-offset-4 hover:underline",
           className,
         )}
         {...rest}
@@ -80,7 +93,7 @@ function A({ href = "", children, className, ...rest }: ComponentProps<"a">) {
     <Link
       href={href}
       className={cn(
-        "text-accent underline-offset-4 hover:underline",
+        "font-medium text-accent underline-offset-4 hover:underline",
         className,
       )}
     >
@@ -97,7 +110,7 @@ function Blockquote({
   return (
     <blockquote
       className={cn(
-        "my-6 border-l-2 border-accent pl-4 italic text-secondary",
+        "my-6 rounded-r-xl border-l-2 border-accent bg-accent/5 px-4 py-3 italic text-secondary",
         className,
       )}
       {...rest}
@@ -111,7 +124,7 @@ function InlineCode({ children, className, ...rest }: ComponentProps<"code">) {
   return (
     <code
       className={cn(
-        "rounded border border-border bg-bg-elevated px-1.5 py-0.5 font-mono text-[0.875em]",
+        "rounded border border-border bg-bg-elevated/60 px-1.5 py-0.5 font-mono text-[0.875em] text-primary backdrop-blur-md",
         className,
       )}
       {...rest}
@@ -125,7 +138,7 @@ function Pre({ children, className, ...rest }: ComponentProps<"pre">) {
   return (
     <pre
       className={cn(
-        "my-6 overflow-x-auto rounded-lg border border-border bg-bg-elevated p-4 text-sm leading-relaxed",
+        "glass my-6 overflow-x-auto rounded-2xl p-5 text-sm leading-relaxed",
         className,
       )}
       {...rest}
@@ -139,7 +152,7 @@ function UL({ children, className, ...rest }: ComponentProps<"ul">) {
   return (
     <ul
       className={cn(
-        "my-4 ml-6 list-disc space-y-2 text-secondary marker:text-muted",
+        "my-5 ml-6 list-disc space-y-2 text-secondary marker:text-accent/70",
         className,
       )}
       {...rest}
@@ -153,13 +166,22 @@ function OL({ children, className, ...rest }: ComponentProps<"ol">) {
   return (
     <ol
       className={cn(
-        "my-4 ml-6 list-decimal space-y-2 text-secondary marker:text-muted",
+        "my-5 ml-6 list-decimal space-y-2 text-secondary marker:text-muted",
         className,
       )}
       {...rest}
     >
       {children}
     </ol>
+  );
+}
+
+function HR({ className, ...rest }: ComponentProps<"hr">) {
+  return (
+    <hr
+      className={cn("my-10 border-t border-border", className)}
+      {...rest}
+    />
   );
 }
 
@@ -171,8 +193,6 @@ function Img({
   className,
   ...rest
 }: ComponentProps<"img">) {
-  // next/image needs explicit dimensions; for content authored without sizes
-  // we fall back to a regular <img>. Phase 5+ may add dimension metadata.
   return (
     // eslint-disable-next-line @next/next/no-img-element -- intentional <img/> fallback for MDX without dimension data
     <img
@@ -180,7 +200,7 @@ function Img({
       alt={alt ?? ""}
       width={width}
       height={height}
-      className={cn("my-6 rounded-lg border border-border", className)}
+      className={cn("my-6 rounded-2xl border border-border", className)}
       {...rest}
     />
   );
@@ -196,14 +216,14 @@ function Callout({
   children: ReactNode;
 }) {
   const stripes: Record<CalloutType, string> = {
-    info: "border-accent/40 bg-accent/5",
+    info: "border-[var(--accent)]/40 bg-[var(--accent-soft)]",
     warning: "border-amber-500/40 bg-amber-500/5",
     tip: "border-emerald-500/40 bg-emerald-500/5",
   };
   return (
     <div
       className={cn(
-        "my-6 rounded-md border-l-2 px-4 py-3 leading-relaxed text-secondary",
+        "my-6 rounded-2xl border-l-2 px-5 py-4 leading-relaxed text-secondary backdrop-blur-md",
         stripes[type],
       )}
       role="note"
@@ -215,11 +235,11 @@ function Callout({
 
 function ComingSoon() {
   return (
-    <Card>
+    <div className="glass my-6 rounded-2xl p-6">
       <p className="leading-relaxed text-secondary">
         Case study coming soon — a full write-up will be published here.
       </p>
-    </Card>
+    </div>
   );
 }
 
@@ -233,7 +253,7 @@ function Stack({
   return (
     <div
       className={cn(
-        "my-6 overflow-x-auto rounded-lg border border-border bg-bg-elevated p-6 font-mono text-sm leading-relaxed text-secondary",
+        "glass my-8 overflow-x-auto rounded-2xl p-6 font-mono text-sm leading-relaxed text-secondary",
         className,
       )}
     >
@@ -248,11 +268,13 @@ export const mdxComponents = {
   h4: H4,
   p: P,
   a: A,
+  strong: Strong,
   blockquote: Blockquote,
   code: InlineCode,
   pre: Pre,
   ul: UL,
   ol: OL,
+  hr: HR,
   img: Img,
   Callout,
   ComingSoon,

@@ -1,0 +1,76 @@
+---
+title: Klipin
+tagline: AI video clipper for Indonesian creators — paste a YouTube link, get vertical clips with auto-reframe and burned-in subtitles
+stack: ["Next.js 14", "TypeScript", "FastAPI", "FFmpeg", "Whisper", "Gemini", "PostgreSQL", "S3"]
+year: "2026"
+status: in-progress
+role: Solo builder
+featured: true
+links:
+  repo: https://github.com/aldirifai/klipin
+---
+
+## Problem
+
+Indonesian creators repurpose long-form YouTube content into TikTok / Reels / Shorts every day, and the existing tooling is either expensive (Opus Clip, Vizard at USD 19–95/month) or built for English-only audio. Indonesian podcasts mix Bahasa with English filler words, regional slang, and code-switching — Whisper-large handles it well, but most consumer clipping apps still ship a small English-only model.
+
+What creators actually want is mundane: paste a YouTube link, mark a couple of moments worth keeping, and get back vertical (9:16) clips with the speaker centered, burned-in word-by-word subtitles, and auto-generated hook captions in their own language. Klipin does exactly that, priced for the Indonesian market, with Whisper-large + Gemini handling transcription and clip selection.
+
+## Architecture
+
+<Stack>
+  ┌─────────────┐
+  │  Next.js 14 │ ── upload URL ──┐
+  │  (App Router│                 ▼
+  │   + Tailwind│        ┌────────────────┐         ┌──────────┐
+  │  + Stripe)  │ ◀──── │    FastAPI     │ ──────▶ │ yt-dlp   │
+  └─────────────┘   poll │  (orchestrator) │ download│ + ffmpeg │
+                         └────────────────┘         └──────────┘
+                            │       │       │
+                  ┌─────────┘       │       └─────────┐
+                  ▼                 ▼                 ▼
+           ┌──────────────┐  ┌─────────────┐  ┌─────────────┐
+           │   Whisper    │  │   Gemini    │  │  YOLO face  │
+           │  (transcribe)│  │ (clip + caps)│  │  detection  │
+           └──────────────┘  └─────────────┘  └─────────────┘
+                                  │
+                                  ▼
+                            ┌──────────┐         ┌────────┐
+                            │ Postgres │ ◀────── │   S3   │
+                            │  (jobs)  │         │ (clips)│
+                            └──────────┘         └────────┘
+</Stack>
+
+The Next.js app collects a YouTube URL plus optional manual moment markers and POSTs to FastAPI. A worker downloads the source via `yt-dlp`, transcribes with Whisper-large, and asks Gemini to pick high-engagement segments and write captions. FFmpeg then crops to 9:16 using YOLO face-detection coordinates so the speaker stays centered, burns in word-timed subtitles, and uploads the finished clip to S3-compatible storage. The frontend polls job status and shows a side-by-side preview when the clip is ready.
+
+## Key Decisions
+
+**1. Whisper-large, not Whisper-small or a hosted ASR.** Indonesian + English code-switching is the central content category. Smaller Whisper variants drop accuracy on the hand-off between languages, and hosted ASR (AssemblyAI, Deepgram) costs ~USD 0.45/hour for Indonesian — roughly 3× more than running Whisper-large on a rented GPU. Self-hosting locks me into ops work but keeps the unit economics workable for the Indonesian price point.
+
+**2. Gemini for clip selection over GPT-4 / Claude.** The clip-selection prompt is long (full transcript with timestamps) and gets called once per video. Gemini 2.0 Flash priced at < USD 0.01/video for the typical 30–60 minute podcast. Quality is comparable for "find the punchy moments and write a hook" — this isn't a task that needs frontier reasoning.
+
+**3. Burned-in subtitles, not soft subtitles.** TikTok and Reels both auto-generate captions, but creators consistently report that auto-captions kill watch time when they get a word wrong. Burning the captions in (one ffmpeg pass) gives full control over font, color, position, and word-by-word timing — and it's the standard look for top-performing Indonesian creators.
+
+**4. yt-dlp on a private worker, not a "bring your own MP4" upload.** Most users in this market have flaky last-mile bandwidth — uploading a 2 GB MP4 from a phone is painful. Pulling the source down server-side from the YouTube link they already have is faster end-to-end and removes a friction point. Tradeoff: I have to keep yt-dlp updated as YouTube changes its anti-bot measures.
+
+**5. Manual moment markers as an optional override.** The Gemini-selected clips are usually fine, but creators have their own taste. The UI lets them drag a timeline and mark "give me a clip starting here, ~45 seconds." It's a small bit of control that turns "AI clipper" into "AI assistant for clipping" — and the second framing converts much better in early user interviews.
+
+## Stack Rationale
+
+**Next.js 14 (App Router) + TypeScript.** The frontend is mostly upload, status polling, and a clip preview gallery. Server components for the dashboard, client components for the upload and live preview. Tailwind for fast iteration on a UI that I expect to redesign once early users tell me what's missing.
+
+**FastAPI for the worker orchestrator.** Python is the native language of the ML stack (Whisper, YOLO models, ffmpeg-python). FastAPI gives me typed requests with Pydantic and async endpoints for long-running jobs. Workers run as separate processes consuming jobs from the database — no Celery yet, just Postgres `FOR UPDATE SKIP LOCKED`.
+
+**PostgreSQL as queue + state.** Two tables: `videos` (source URLs, status, transcript) and `clips` (timestamps, S3 keys, status). A small but real-world demonstration that Postgres is a perfectly good queue for a personal-scale system. When throughput becomes a real constraint, the upgrade path is to a proper queue — not before.
+
+**S3-compatible storage.** Source videos and clips are bulky and infrequently accessed once consumed. Object storage is cheap, has lifecycle policies (delete clips after 30 days unless promoted), and works the same whether I host on AWS S3, IDCloudHost Object Storage, or self-hosted MinIO.
+
+**Stripe for billing.** Pricing in IDR is cleaner via Xendit, but Stripe has better DX and handles international cards if any users come from outside Indonesia. I'm starting Stripe-first and will revisit when the user mix justifies a switch.
+
+## What I'm Learning
+
+**Indonesian creators rate caption accuracy higher than I expected.** Two early testers told me they'd rather have a slightly less interesting clip with perfect captions than a great clip with one wrong word. This pushed me to invest in caption review (a quick UI for the user to fix words before the burn-in step) rather than chasing better clip selection.
+
+**FFmpeg auto-reframe is a rabbit hole.** Naive face-tracking jitters when there are multiple people on screen or when the speaker turns away. The current approach holds the face in frame for 8+ frames before switching, which feels much smoother than per-frame tracking — at the cost of a small lag when speakers swap.
+
+**Self-hosting GPU is the right call for now.** A spot rental from a Singapore region runs me ~USD 80/month for 24/7 uptime, and Whisper-large processes a 60-minute podcast in ~3 minutes. At my current volume, hosted Whisper APIs would be 2–3× more expensive. When demand swings make spot-shutdowns costly, I'll revisit — but not yet.

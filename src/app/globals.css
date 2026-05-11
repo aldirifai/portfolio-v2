@@ -1,29 +1,65 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+
+  --color-bg: var(--bg);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-primary: var(--text-primary);
+  --color-secondary: var(--text-secondary);
+  --color-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-glow: var(--accent-glow);
+
+  --container-content: 42rem;
+  --container-wide: 80rem;
+
+  --radius-glass: 1.25rem;
+
+  --shadow-glass: 0 1px 0 0 rgb(255 255 255 / 0.04) inset, 0 8px 24px -12px rgb(0 0 0 / 0.4);
+  --shadow-glow: 0 0 0 1px var(--border), 0 0 60px -20px var(--accent-glow);
+}
 
 @layer base {
   :root {
-    --bg: #ffffff;
-    --bg-elevated: #fafafa;
-    --border: #e4e4e7;
+    --bg: #fafaf9;
+    --bg-elevated: #ffffff;
+    --surface: rgb(255 255 255 / 0.6);
+    --surface-strong: rgb(255 255 255 / 0.8);
+    --border: rgb(0 0 0 / 0.08);
+    --border-strong: rgb(0 0 0 / 0.16);
     --text-primary: #0a0a0a;
-    --text-secondary: #52525b;
-    --text-muted: #71717a;
-    --accent: #d97706;
+    --text-secondary: #44403c;
+    --text-muted: #78716c;
+    --accent: #ea580c;
     --accent-fg: #ffffff;
+    --accent-soft: rgb(234 88 12 / 0.12);
+    --accent-glow: rgb(234 88 12 / 0.3);
   }
 
   .dark {
-    --bg: #0a0a0a;
-    --bg-elevated: #111111;
-    --border: #262626;
+    --bg: #08080b;
+    --bg-elevated: #0d0d11;
+    --surface: rgb(255 255 255 / 0.04);
+    --surface-strong: rgb(255 255 255 / 0.07);
+    --border: rgb(255 255 255 / 0.08);
+    --border-strong: rgb(255 255 255 / 0.16);
     --text-primary: #fafafa;
-    --text-secondary: #a1a1aa;
-    /* bumped from #71717a to clear WCAG AA (4.5:1) on bg-elevated #111. */
-    --text-muted: #8a8a93;
-    --accent: #f59e0b;
-    --accent-fg: #0a0a0a;
+    --text-secondary: #d4d4d8;
+    --text-muted: #a1a1aa;
+    --accent: #fb923c;
+    --accent-fg: #1a0a00;
+    --accent-soft: rgb(251 146 60 / 0.14);
+    --accent-glow: rgb(251 146 60 / 0.35);
   }
 
   html {
@@ -35,17 +71,125 @@
     color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    background-image:
+      radial-gradient(60% 60% at 50% -10%, var(--accent-soft) 0%, transparent 60%),
+      radial-gradient(40% 30% at 95% 5%, var(--accent-soft) 0%, transparent 60%);
+    background-attachment: fixed;
+  }
+
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border);
   }
 
   ::selection {
     background-color: var(--accent);
     color: var(--accent-fg);
   }
+
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 9999px;
+    border: 3px solid var(--bg);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--border-strong);
+  }
 }
 
 @layer components {
-  /* rehype-pretty-code dual theme — Shiki emits inline custom properties for both themes;
-     these rules pick which one applies based on the active class on <html>. */
+  .glass {
+    background-color: var(--surface);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid var(--border);
+  }
+
+  .glass-strong {
+    background-color: var(--surface-strong);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid var(--border);
+  }
+
+  .gradient-border {
+    position: relative;
+    isolation: isolate;
+  }
+  .gradient-border::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    background: linear-gradient(
+      135deg,
+      var(--border-strong) 0%,
+      transparent 30%,
+      transparent 70%,
+      var(--accent-glow) 100%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .text-gradient {
+    background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .text-gradient-accent {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--text-primary) 80%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .aurora {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .aurora::before,
+  .aurora::after {
+    content: "";
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(80px);
+    opacity: 0.6;
+  }
+  .aurora::before {
+    width: 480px;
+    height: 480px;
+    background: var(--accent-glow);
+    top: -120px;
+    left: -120px;
+  }
+  .aurora::after {
+    width: 360px;
+    height: 360px;
+    background: var(--accent-soft);
+    bottom: -80px;
+    right: -80px;
+  }
+
   .shiki,
   .shiki span {
     color: var(--shiki-light);
@@ -58,7 +202,6 @@
     background-color: var(--shiki-dark-bg);
   }
 
-  /* Highlighted lines / words from rehype-pretty-code */
   [data-highlighted-line] {
     background-color: rgb(255 255 255 / 0.05);
     border-left: 2px solid var(--accent);
@@ -72,7 +215,6 @@
     padding: 0 0.25rem;
   }
 
-  /* Line numbers (when enabled in MDX with showLineNumbers) */
   code[data-line-numbers] {
     counter-reset: line;
   }
@@ -85,4 +227,16 @@
     text-align: right;
     color: var(--text-muted);
   }
+}
+
+@utility container-content {
+  max-width: var(--container-content);
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+}
+
+@utility container-wide {
+  max-width: var(--container-wide);
+  margin-inline: auto;
+  padding-inline: 1.25rem;
 }

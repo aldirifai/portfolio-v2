@@ -1,0 +1,87 @@
+---
+title: Landingklinik Stack
+tagline: 5-site monorepo — landingklinik.id portfolio plus four template demo sites for dental clinics (general, aesthetic, pediatric, dashboard) deployed via Docker + Nginx + Certbot
+stack: ["Next.js 14", "TypeScript", "Tailwind CSS", "Docker Compose", "Nginx", "Certbot", "Cloudflare DNS"]
+year: "2025"
+status: live
+role: Solo builder
+featured: false
+links:
+  repo: https://github.com/aldirifai/landingklinik-stack
+---
+
+## Problem
+
+A friend who runs a small clinic-website business needed an honest demo gallery — something a prospect could click into and feel "yes, this is what my clinic could look like." Templates on Themeforest and similar marketplaces are fine but generic; they don't speak Indonesian dental conventions (BPJS support, payment in IDR, JNE/Cash on delivery for product purchases, integration with WhatsApp).
+
+We also needed the demos to live on real subdomains with proper SSL — not Vercel previews — so prospects could see the deploy story end-to-end. And the whole thing needed to ship from a single repository because she's the only person maintaining it: one CI pipeline, one deploy script, one Cloudflare zone.
+
+The result is a five-site monorepo: the main landingklinik.id portfolio plus four "vertical" demo clinics (general practice, aesthetic, pediatric, an admin dashboard) — each on its own subdomain, all built and deployed from the same codebase via Docker Compose and Nginx.
+
+## Architecture
+
+<Stack>
+                           ┌─────────────────┐
+                           │  Cloudflare DNS │
+                           │ (one zone, five │
+                           │   subdomains)   │
+                           └────────┬────────┘
+                                    │ A records
+                                    ▼
+                          ┌────────────────────┐
+                          │   VPS — Nginx 80   │
+                          │   + Certbot (TLS)  │
+                          └─────────┬──────────┘
+                                    │ proxy_pass per host
+        ┌─────────────────┬─────────┼─────────┬──────────────────┐
+        ▼                 ▼         ▼         ▼                  ▼
+  ┌───────────┐  ┌──────────────┐ ┌─────────┐ ┌──────────┐ ┌─────────────┐
+  │ landing   │  │  general     │ │ aesthe- │ │ pediatric│ │  dashboard  │
+  │ klinik.id │  │  klinik demo │ │   tic   │ │  demo    │ │   demo      │
+  │ :3000     │  │  :3001       │ │ :3002   │ │ :3003    │ │   :3004     │
+  └───────────┘  └──────────────┘ └─────────┘ └──────────┘ └─────────────┘
+        ▲                 ▲         ▲         ▲                  ▲
+        └─────────────────┴─────────┼─────────┴──────────────────┘
+                                    │
+                          ┌─────────┴──────────┐
+                          │   Docker Compose   │
+                          │   one repo, five   │
+                          │   apps             │
+                          └────────────────────┘
+</Stack>
+
+A monorepo with a `apps/` directory holding five Next.js apps. A shared `packages/ui` exports the design system (button, card, hero variants, pricing tables) so each demo can be themed but not rebuild primitives. Docker Compose builds and runs all five containers, each bound to a different localhost port. Nginx fronts them with `proxy_pass` based on `Host` header. Certbot manages SAN certificates for the apex + all four subdomains in one go.
+
+## Key Decisions
+
+**1. Monorepo with shared UI package.** The first version had four separate Next.js projects, each with its own copy of the button and card components. Updating a component meant five PRs. Folding them into a single repo with a `packages/ui` workspace cut the per-feature work by ~3× and made the design system easier to evolve.
+
+**2. One Cloudflare zone, multiple subdomains, one SAN certificate.** Trying to manage four separate certs (one per demo subdomain) was operationally noisy — renewals at different times, separate Nginx server blocks, separate zones. Folding everything under `landingklinik.id` with `general.`, `aesthetic.`, `pediatric.`, `app.` subdomains lets Certbot issue a single multi-domain certificate.
+
+**3. Docker Compose with explicit port mapping, not service discovery.** Five Next.js apps on five different ports. Nginx config picks the right one per `Host`. This is unfashionable compared to Traefik or Caddy with auto-discovery, but it's `docker compose up && nginx -s reload` for the whole site, easy to debug, and it doesn't depend on extra infrastructure.
+
+**4. Static export per demo, not server-side runtime.** The four demo clinics are entirely static — no auth, no user data, no live integrations. `next build && next export` (or App Router equivalent) produces static files. Nginx serves them directly with aggressive caching. CDN edge cache via Cloudflare is on for the demo subdomains.
+
+**5. One CI pipeline, parallel builds.** GitHub Actions builds all five apps in parallel jobs (matrix strategy) and uploads each as a Docker image to GHCR. The deploy step on the VPS pulls all five images and `docker compose up -d`. Total CI time stays under 4 minutes even when all five sites change.
+
+## Stack Rationale
+
+**Next.js 14 (App Router).** Marketing sites are exactly what Next.js is best at: SEO-friendly SSR/SSG, image optimization, dead-simple routing. App Router for the cleaner `app/` layout and server components.
+
+**Tailwind CSS.** A small design system with three color themes (general, aesthetic, pediatric have different palettes) is straightforward in Tailwind via CSS variables that switch per app. No CSS-in-JS overhead.
+
+**Cloudflare DNS.** Free, fast, and the one place that holds the source of truth for which subdomain points where. DNS-only mode (no proxying) so Certbot can do HTTP-01 challenges directly.
+
+**Docker Compose + Nginx.** Five small services with a single reverse proxy is the simplest architecture that meets the requirement. No Kubernetes, no Docker Swarm, no Traefik. The compose file is under 80 lines.
+
+**Certbot + acme.sh.** Standard Let's Encrypt with auto-renewal via systemd timer. The SAN certificate covers all five hostnames, so renewal is a single command.
+
+## What I Learned
+
+**Demo sites are sales tools — make them feel real.** Early demos used `https://demo-1.example.com` URLs and "Lorem ipsum" copy. Conversion was bad. Switching to clinic-themed names, real-feeling Indonesian copy (Bahasa, real city names, IDR pricing, BPJS notes), and proper SSL on real subdomains moved the needle far more than any visual polish.
+
+**Monorepos with shared UI need a story for "just slightly different."** Three of the four demos share 80% of components, but each has small variants (the pediatric site needs a softer color palette, the aesthetic site has a different hero). I learned to build components with sensible defaults and a small number of well-named variants, rather than one mega-component with 30 props.
+
+**Static is plenty for marketing pages.** I started with full Next.js SSR runtime per site, which meant five Node processes consuming RAM. Switching to static export per demo cut VPS RAM usage by ~70% and removed an entire class of failure mode (Node process crashing, port conflict, pm2 weirdness).
+
+**SAN certificates simplify everything.** One renewal, one log line, one rollback path. Multi-domain certificates feel like a small detail until you have a vendor outage at 2 AM.

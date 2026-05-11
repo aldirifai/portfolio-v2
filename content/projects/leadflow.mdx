@@ -1,0 +1,84 @@
+---
+title: Leadflow
+tagline: Personal lead-generation pipeline — capture Google Maps listings via Chrome extension, score them, enrich with LLMs, and run manual outreach with cooldown / opt-out guardrails
+stack: ["FastAPI", "Next.js 14", "PostgreSQL", "Chrome Extension", "OpenRouter", "Docker", "Alembic"]
+year: "2025"
+status: shipped
+role: Solo builder
+featured: false
+links:
+  repo: https://github.com/aldirifai/leadflow
+---
+
+## Problem
+
+I do occasional freelance work, and the part I always disliked was the prospecting: scraping leads, deduping them, ranking them, drafting personalised outreach, then remembering not to spam someone I'd already contacted. Most "growth tools" automate the whole pipeline — including the parts that get you flagged, blocked, or sued.
+
+Leadflow is the opposite: a personal-scale tool that captures leads only when I'm already on a Google Maps listing, helps me score and enrich them in bulk, and then steps out of the way so I can do the outreach myself, manually, on whatever channel makes sense. The interesting work was building the guardrails (cooldown, opt-out, rate limits) so the tool keeps me honest even when I'm tempted to be lazy.
+
+It's a sharp counterpoint to Klipin's all-in-one philosophy. Some pipelines should automate the picks-and-shovels work and leave the human in the loop for the part that actually requires judgment.
+
+## Architecture
+
+<Stack>
+        ┌─────────────────────┐
+        │ Chrome Extension    │
+        │ (Maps listing page) │
+        └──────────┬──────────┘
+                   │ POST lead
+                   ▼
+        ┌─────────────────────┐         ┌──────────────┐
+        │     FastAPI         │ ──────▶ │ OpenRouter   │
+        │  /api/leads, /score │ ◀────── │ (enrichment) │
+        └─────────┬───────────┘         └──────────────┘
+                  │
+                  ▼
+        ┌─────────────────────┐
+        │   PostgreSQL        │
+        │ (leads, contacts,   │
+        │  outreach, cooldown)│
+        └─────────┬───────────┘
+                  ▲
+                  │
+        ┌─────────┴───────────┐
+        │   Next.js 14 admin  │
+        │ (kanban + outreach  │
+        │   workflow)         │
+        └─────────────────────┘
+</Stack>
+
+The Chrome extension reads structured data from the Google Maps listing I'm currently viewing and POSTs it to FastAPI. The backend dedupes (canonical phone/email/website match), scores via a small rule engine (industry, size proxy, geographic fit), and queues async LLM enrichment (probable contact role, business summary, language preference). The Next.js dashboard is a simple kanban (`new` → `qualified` → `contacted` → `replied` → `won/lost`) with explicit cooldown windows and a hard opt-out list.
+
+## Key Decisions
+
+**1. Manual outreach, full stop.** Once a lead is "qualified," the tool's job is done. It hands me a pre-filled message draft, a copy-paste contact field, and a logging button — but it never sends anything itself. This is a hard line: if I find myself wanting to add an "auto-send" feature, that's a sign I've drifted from the pipeline this is built for.
+
+**2. Cooldown is enforced in the database, not the UI.** A `cooldown_until` column blocks any UI control that would let me re-contact the same lead. The check is in the API, not just the frontend. If I ever spin up a CLI to bulk-message, I want it to inherit the same guardrail without me having to remember.
+
+**3. Opt-out list is global, not per-pipeline.** Once a contact says "remove me," they're permanently flagged across every campaign, every project, forever. The database has a single `opt_outs` table joined into every lead query. Even if I delete and re-import the lead, the opt-out flag survives.
+
+**4. LLM does enrichment, deterministic code does scoring.** Same lesson as Fintrack: don't let the model touch numbers. The rule-based scorer reads structured fields (industry codes, employee count proxies, distance) and outputs a score. The LLM only decorates: probable contact role, suggested intro angle, language preference. If the LLM is unavailable, the scorer still works.
+
+**5. Chrome extension over a scraper.** Scraping Google Maps at scale is in a TOS grey zone and an anti-bot arms race. The extension only captures what I'm already viewing in my own browser session — manual, slow, and small-scale by design. It also means the data is up-to-date because it's whatever Google is showing me right now.
+
+## Stack Rationale
+
+**FastAPI.** The backend is mostly small CRUD + a few LLM calls + scheduled cooldown sweeps. FastAPI's typed Pydantic schemas pair well with the Next.js TypeScript client (I generate types from the OpenAPI spec). Alembic handles migrations.
+
+**Next.js 14 (App Router).** A small kanban + a few forms. Server components for the lead list (server-side filtering and pagination), client components for the drag-drop board. Tailwind for speed.
+
+**PostgreSQL.** The whole pipeline is relational — leads, contacts, organizations, outreach attempts, cooldown windows. Joining and filtering across these is the daily query, and Postgres is the natural fit. JSONB columns hold the LLM enrichment payload so I can change the enrichment schema without a migration.
+
+**Chrome Extension (Manifest v3).** Tiny — content script reads Google Maps' embedded JSON-LD plus a few DOM fallbacks, pops a quick "Add to Leadflow" button, and POSTs to my locally-running FastAPI. No background service worker doing scraping. The whole codebase is under 400 lines.
+
+**Docker Compose, self-hosted.** Both the FastAPI worker and the Next.js admin run in the same compose file alongside Postgres. The Chrome extension hits a Tailscale IP so I can use it from my work laptop without exposing the API publicly.
+
+## What I Learned
+
+**Guardrails are the product, not a constraint.** Building cooldown enforcement in the database, opt-out as a global concept, and "no auto-send" as a non-negotiable rule made the tool *useful* rather than just *fast*. Lots of growth tools optimize for volume; this one optimized for not being the kind of person I don't want to be.
+
+**Personal-scale tools deserve real engineering.** It's tempting to ship a personal tool with two scripts and a Notion sheet. But the moment it became a real part of my workflow, the small acts of care — typed schemas, migrations, automated tests for the scoring rules — paid for themselves. I don't want to think hard about my own tools; I want them to be invisible.
+
+**Indonesian B2B prospecting is heavily WhatsApp.** I built the tool assuming email outreach. Real freelance leads in my market overwhelmingly prefer WhatsApp. The tool now generates a "send via WhatsApp Web" deep link that pre-fills the contact and a message template — a tiny addition that completely changed how I use it day-to-day.
+
+**Chrome extensions in 2025 are pleasant.** Manifest v3 is constrained but well-documented. The hardest part was setting up the Vite + tsup build pipeline; everything after that was just DOM scraping and `fetch`.

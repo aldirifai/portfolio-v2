@@ -397,7 +397,7 @@ Deploy artifacts live in `deploy/` and root-level Docker files:
 └── deploy/
     ├── README.md                        # comprehensive runbook (bootstrap → first deploy)
     ├── nginx/aldirifai.com.conf         # reverse proxy + TLS + redirects + caching
-    └── .env.production.template         # template for /srv/portfolio/.env.production
+    └── .env.production.template         # template for /var/www/aldirifai.com/.env.production
 ```
 
 ---
@@ -649,11 +649,11 @@ D) Nginx reverse proxy config:
 
 E) GitHub Actions CI/CD (.github/workflows/deploy.yml):
 - On push to main: SSH to VPS using GH secrets (HOST, USER, SSH_KEY, KNOWN_HOSTS)
-- On VPS: cd /srv/portfolio && git pull && docker compose build && docker compose up -d
+- On VPS: cd /var/www/aldirifai.com && git pull && docker compose build && docker compose up -d
 - Add deployment status comment on commit
 
 F) Documentation in deploy/README.md:
-- One-time VPS setup checklist (Docker install, Nginx install, Certbot, firewall, /srv/portfolio bootstrap)
+- One-time VPS setup checklist (Docker install, Nginx install, Certbot, firewall, /var/www/aldirifai.com bootstrap)
 - Required GitHub secrets list
 - DNS records needed (A record for aldirifai.com → VPS IP, A record for www → same IP)
 - Rollback procedure (git revert + redeploy)
@@ -875,7 +875,7 @@ jobs:
           script_stop: true
           script: |
             set -euo pipefail
-            cd /srv/portfolio
+            cd /var/www/aldirifai.com
             git fetch --all
             git reset --hard origin/main
             docker compose build
@@ -895,8 +895,8 @@ usermod -aG docker $USER
 # 2. Install Nginx + Certbot
 apt update && apt install -y nginx certbot python3-certbot-nginx
 
-# 3. Clone repo to /srv/portfolio
-mkdir -p /srv/portfolio && cd /srv/portfolio
+# 3. Clone repo to /var/www/aldirifai.com
+mkdir -p /var/www/aldirifai.com && cd /var/www/aldirifai.com
 git clone git@github.com:aldirifai/portfolio.git .
 
 # 4. Create .env.production with secrets

@@ -135,10 +135,10 @@ free -h    # confirm swap is now active
 ### 2.8 Create app directory and clone
 
 ```bash
-sudo mkdir -p /srv/portfolio
-sudo chown deploy:deploy /srv/portfolio
+sudo mkdir -p /var/www/aldirifai.com
+sudo chown deploy:deploy /var/www/aldirifai.com
 sudo -u deploy bash <<'EOF'
-cd /srv/portfolio
+cd /var/www/aldirifai.com
 git clone https://github.com/aldirifai/portfolio-v2.git .
 EOF
 ```
@@ -152,7 +152,7 @@ EOF
 As the `deploy` user:
 
 ```bash
-cd /srv/portfolio
+cd /var/www/aldirifai.com
 cp deploy/.env.production.template .env.production
 # Edit and fill in real values:
 nano .env.production
@@ -184,7 +184,7 @@ curl -s http://localhost:3000/api/health
 ### 2.11 Wire Nginx to the container
 
 ```bash
-sudo ln -s /srv/portfolio/deploy/nginx/aldirifai.com.conf \
+sudo ln -s /var/www/aldirifai.com/deploy/nginx/aldirifai.com.conf \
            /etc/nginx/sites-enabled/aldirifai.com.conf
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t      # config test must pass
@@ -301,7 +301,7 @@ Notes:
 After Resend shows "Verified", update `.env.production` on the VPS:
 
 ```bash
-cd /srv/portfolio
+cd /var/www/aldirifai.com
 nano .env.production            # set CONTACT_FROM_EMAIL=noreply@aldirifai.com
 docker compose up -d            # reloads container with new env
 ```
@@ -344,7 +344,7 @@ Auto-redeploys the revert via the standard workflow.
 
 ```bash
 ssh deploy@<VPS_IP>
-cd /srv/portfolio
+cd /var/www/aldirifai.com
 git fetch --all
 git reset --hard <last-known-good-sha>
 docker compose build

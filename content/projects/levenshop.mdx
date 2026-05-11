@@ -1,0 +1,84 @@
+---
+title: Levenshop
+tagline: Indonesian e-commerce storefront — Laravel + Blade + Xendit, mobile-first, with a slim admin and a focus on conversion-clean UX
+stack: ["Laravel", "Blade", "MySQL", "Tailwind CSS", "Xendit", "Cloudflare", "Nginx"]
+year: "2025"
+status: live
+role: Solo builder
+featured: false
+links:
+  repo: https://github.com/aldirifai/levenshop
+---
+
+## Problem
+
+Most Indonesian small-business owners selling online sit between two unhappy options: a marketplace (Tokopedia / Shopee) where they fight for visibility and pay 5–15% in fees on every order, or Shopify with its USD-priced plans, English-first UX, and clunky support for local payment methods.
+
+A friend running a small fashion line wanted her own storefront — clean URL, full brand control, IDR pricing, Xendit checkout for QRIS / bank transfer / e-wallets, and a simple admin she could run from her phone. Mobile checkout had to feel like Shopee (because that's what her customers are used to) but the order flow had to be hers.
+
+Levenshop is that storefront. A focused, mobile-first Laravel storefront with a thin product catalog, a clean checkout, and Xendit handling all the local payment rails. Not a "platform" — just one shop, well built.
+
+## Architecture
+
+<Stack>
+            ┌─────────────────────┐
+            │  Customer (mobile)  │
+            └──────────┬──────────┘
+                       │
+                       ▼
+            ┌─────────────────────┐         ┌──────────────────┐
+            │  Cloudflare CDN     │ ──────▶ │  Nginx + Laravel │
+            │  (static + page     │         │   (Blade SSR)    │
+            │   cache)            │         └────────┬─────────┘
+            └─────────────────────┘                  │
+                                                     ▼
+                                             ┌──────────────┐
+                                             │   MySQL      │
+                                             │ (products,   │
+                                             │  orders,     │
+                                             │  customers)  │
+                                             └──────┬───────┘
+                                                    ▲
+                                                    │ webhook
+                                             ┌──────┴───────┐
+                                             │   Xendit     │
+                                             │ (QRIS, VA,   │
+                                             │  e-wallets)  │
+                                             └──────────────┘
+</Stack>
+
+A traditional server-rendered Laravel + Blade app. Cloudflare in front handles static assets and page-level caching for the catalog. Customers go from product page → cart → Xendit hosted checkout → order-confirmation page. Xendit webhooks update order status server-side. Owner admin (Filament) lives behind auth at `/admin`.
+
+## Key Decisions
+
+**1. Server-rendered Blade, not an SPA.** The customer journey is mostly read-only browsing with a single transactional checkout. Blade renders pages fast on cheap shared hosting; SEO works without effort; the codebase has one runtime, not two. The cart is the only stateful piece, and it lives in cookies.
+
+**2. Xendit hosted checkout, not custom card forms.** PCI compliance is a black hole for a one-person shop. Xendit's hosted page handles QRIS, bank transfers (BCA, BNI, Mandiri), e-wallets (GoPay, OVO, Dana, ShopeePay), and credit cards — all in one redirect. The integration is two endpoints: create invoice, handle webhook.
+
+**3. Cloudflare page cache for the catalog.** Product pages are mostly static (price, description, photos). Cloudflare caches them at the edge with a short TTL and a cache-tag bust on inventory changes. Origin RPS dropped to a fraction of total traffic, which is exactly what cheap VPS hosting needs.
+
+**4. Filament for admin.** A single `php artisan make:filament-resource Product` gave me a working CRUD with table view, filters, sorting, and edit forms. Order management, customer view, and inventory adjust all came in under an hour each. The owner uses it from her phone without complaints.
+
+**5. Mobile-first design language.** ~85% of Indonesian e-commerce traffic is mobile. The checkout button is bottom-fixed and thumb-reachable. Forms are single-column with native input types. There is no horizontal scroll anywhere. Desktop just gets the same layout with more whitespace.
+
+## Stack Rationale
+
+**Laravel.** Eloquent for the product/order/customer model, Eloquent scopes for tenant-style filtering on multi-store mode, queues for sending order-confirmation emails and webhook retries, scheduler for inventory-low alerts. This is exactly the shape Laravel was built for.
+
+**Blade + Tailwind.** Server-rendered pages with Tailwind utility classes. No bundler complexity beyond Vite for the small bit of JS (cart drawer, image gallery). The whole frontend ships under 50 KB of compressed JS.
+
+**MySQL.** The hosting that small Indonesian shops use is overwhelmingly MySQL-first; using it for the project keeps deployment simple and lets the owner host wherever she eventually wants to move. Indexes on the right columns, no exotic features.
+
+**Xendit.** The local standard for Indonesian payments. Their hosted page is fine, the webhook story is reliable, and pricing is transparent (1.7% + IDR 1.6K for QRIS at the time of build). Their dashboard is good enough that the owner can reconcile manually if needed.
+
+**Nginx + Cloudflare.** Nginx serves the Laravel app behind PHP-FPM. Cloudflare in front does TLS, page cache, and bot mitigation. SSL is via Cloudflare's flexible mode (Cloudflare ↔ origin is HTTP) — acceptable for a small shop on shared hosting; will move to full strict when the owner upgrades to a VPS.
+
+## What I Learned
+
+**Hosted checkout is the right default.** I spent two days early in the project trying to embed Xendit's card form for a "more native" checkout. It was fragile and the conversion uplift was negligible. Reverting to the redirect-based hosted page took 30 minutes and saved me the PCI surface entirely.
+
+**Tailwind for Blade is great, but watch the bundle.** Production Tailwind with JIT and proper purging is small. But mid-project I added a few component libraries that pulled in their own Tailwind config, and the unminified CSS exploded. Pin the Tailwind config and content paths upfront; trust nothing else to do it.
+
+**Local payments matter more than UX polish.** The owner asked for QRIS support before she asked for anything visual. Indonesian customers will abandon a checkout that doesn't show a QRIS option. Adding it took two hours via Xendit; adding the "right" hero image took two weeks of iteration. Order matters.
+
+**Server rendering ages well.** Two years later this codebase is unchanged in structure. No migration to a new SPA framework, no "we should rewrite this in Next.js" temptation. Laravel + Blade for a small shop is boring, correct, and continues to be cheap to run. Boring is great.

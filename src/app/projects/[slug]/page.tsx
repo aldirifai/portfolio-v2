@@ -1,17 +1,28 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ExternalLink, Github } from "lucide-react";
+import { ArrowLeft, ExternalLink, Github } from "lucide-react";
 import { Container } from "@/components/layout/Container";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Aurora } from "@/components/ui/Aurora";
 import { MDXContent } from "@/components/content/MDXContent";
-import { TableOfContents, type TocSection } from "@/components/content/TableOfContents";
+import {
+  TableOfContents,
+  type TocSection,
+} from "@/components/content/TableOfContents";
 import { ProjectSchema } from "@/components/seo/ProjectSchema";
 import { extractToc, getAllProjects, getProjectBySlug } from "@/lib/mdx";
 import type { ProjectStatus } from "@/types/project";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://aldirifai.com";
+
+const STATUS_DOT_CLASS: Record<ProjectStatus, string> = {
+  "in-progress": "bg-amber-400",
+  shipped: "bg-emerald-400",
+  live: "bg-emerald-400",
+  "architecture-phase": "bg-sky-400",
+  archived: "bg-zinc-400",
+};
 
 function formatStatus(status: ProjectStatus): string {
   return status
@@ -68,7 +79,6 @@ export default async function ProjectCaseStudyPage({
   if (!project) notFound();
 
   const { links } = project;
-  const hasLinks = Boolean(links?.repo || links?.demo);
 
   const toc = extractToc(project.body);
   const tocSections: TocSection[] = toc
@@ -76,96 +86,119 @@ export default async function ProjectCaseStudyPage({
     .map((entry) => ({ id: entry.id, label: entry.label }));
 
   return (
-    <Container variant="wide" className="py-12 sm:py-16">
-      <ProjectSchema project={project} />
-      <div className="lg:grid lg:grid-cols-[1fr_240px] lg:gap-12">
-        <article className="min-w-0">
-          <header className="mb-12 space-y-3">
-            <p className="font-mono text-xs uppercase tracking-wider text-muted">
+    <div className="relative">
+      <Aurora className="opacity-40" />
+      <Container variant="wide" className="relative z-10 py-12 sm:py-16">
+        <ProjectSchema project={project} />
+
+        <Link
+          href="/projects"
+          className="group inline-flex items-center gap-1.5 font-mono text-xs text-secondary transition-colors hover:text-accent"
+        >
+          <ArrowLeft className="size-3.5 transition-transform group-hover:-translate-x-0.5" />
+          All projects
+        </Link>
+
+        <header className="mt-8 mb-12">
+          <div className="flex flex-wrap items-center gap-2">
+            {project.status && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 backdrop-blur-md">
+                <span
+                  className={`size-1.5 rounded-full ${STATUS_DOT_CLASS[project.status]}`}
+                />
+                <span className="font-mono text-[10px] uppercase tracking-wider text-secondary">
+                  {formatStatus(project.status)}
+                </span>
+              </span>
+            )}
+            <span className="font-mono text-[11px] tracking-tight text-muted">
               {project.year}
-              {project.status ? ` · ${formatStatus(project.status)}` : ""}
-            </p>
-            <h1 className="text-balance text-3xl font-bold tracking-tight md:text-4xl">
-              {project.title}
-            </h1>
-            <p className="text-balance text-lg leading-relaxed text-secondary">
-              {project.tagline}
-            </p>
-          </header>
+            </span>
+            {project.role && (
+              <>
+                <span className="text-muted" aria-hidden>
+                  ·
+                </span>
+                <span className="font-mono text-[11px] tracking-tight text-muted">
+                  {project.role}
+                </span>
+              </>
+            )}
+          </div>
 
-          <div>
+          <h1 className="mt-5 text-balance text-5xl font-semibold tracking-tight sm:text-6xl">
+            <span className="text-gradient-accent">{project.title}</span>
+          </h1>
+          <p className="mt-5 max-w-3xl text-balance text-lg leading-relaxed text-secondary">
+            {project.tagline}
+          </p>
+
+          {(links?.repo || links?.demo) && (
+            <div className="mt-7 flex flex-wrap items-center gap-2">
+              {links?.repo && (
+                <a
+                  href={links.repo}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="glass inline-flex h-9 items-center gap-2 rounded-full px-4 text-xs font-medium transition-colors hover:border-border-strong hover:text-accent"
+                >
+                  <Github className="size-3.5" />
+                  Repository
+                  <ExternalLink className="size-3" />
+                </a>
+              )}
+              {links?.demo && (
+                <a
+                  href={links.demo}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-9 items-center gap-2 rounded-full bg-accent px-4 text-xs font-medium text-accent-fg shadow-[0_0_0_1px_var(--accent),0_8px_24px_-12px_var(--accent-glow)] transition-all hover:-translate-y-0.5"
+                >
+                  Live demo
+                  <ExternalLink className="size-3" />
+                </a>
+              )}
+            </div>
+          )}
+        </header>
+
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-12">
+          <article className="min-w-0 max-w-3xl">
             <MDXContent source={project.body} />
-          </div>
+          </article>
 
-          <div className="mt-12 border-t border-border pt-6">
-            <Link
-              href="/projects"
-              className="text-sm text-secondary transition-colors hover:text-primary"
-            >
-              ← All projects
-            </Link>
-          </div>
-        </article>
-
-        <aside className="mt-12 lg:mt-0">
-          <div className="flex flex-col gap-8 lg:sticky lg:top-24">
-            <SidebarBlock label="Year">
-              <p className="text-sm text-primary">{project.year}</p>
-            </SidebarBlock>
-            {project.status ? (
-              <SidebarBlock label="Status">
-                <p className="text-sm text-primary">{formatStatus(project.status)}</p>
-              </SidebarBlock>
-            ) : null}
-            {project.role ? (
-              <SidebarBlock label="Role">
-                <p className="text-sm text-primary">{project.role}</p>
-              </SidebarBlock>
-            ) : null}
-            <SidebarBlock label="Stack">
-              <div className="flex flex-wrap gap-1.5">
-                {project.stack.map((tech) => (
-                  <Badge key={tech}>{tech}</Badge>
-                ))}
-              </div>
-            </SidebarBlock>
-            {hasLinks ? (
-              <SidebarBlock label="Links">
-                <div className="flex flex-col gap-2">
-                  {links?.repo ? (
-                    <Button href={links.repo} variant="link">
-                      <Github size={16} /> Repository
-                    </Button>
-                  ) : null}
-                  {links?.demo ? (
-                    <Button href={links.demo} variant="link">
-                      <ExternalLink size={16} /> Live demo
-                    </Button>
-                  ) : null}
+          <aside className="mt-12 lg:mt-0">
+            <div className="flex flex-col gap-6 lg:sticky lg:top-24">
+              <div className="glass rounded-2xl p-5">
+                <p className="font-mono text-[10px] uppercase tracking-wider text-muted">
+                  Stack
+                </p>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {project.stack.map((tech) => (
+                    <Badge key={tech}>{tech}</Badge>
+                  ))}
                 </div>
-              </SidebarBlock>
-            ) : null}
-            {tocSections.length > 0 ? (
-              <TableOfContents sections={tocSections} />
-            ) : null}
-          </div>
-        </aside>
-      </div>
-    </Container>
-  );
-}
+              </div>
 
-function SidebarBlock({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <p className="mb-2 font-mono text-xs uppercase tracking-wider text-muted">{label}</p>
-      {children}
+              {tocSections.length > 0 && (
+                <div className="glass rounded-2xl p-5">
+                  <TableOfContents sections={tocSections} />
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
+
+        <div className="mt-16 border-t border-border pt-8">
+          <Link
+            href="/projects"
+            className="group inline-flex items-center gap-1.5 font-mono text-xs text-secondary transition-colors hover:text-accent"
+          >
+            <ArrowLeft className="size-3.5 transition-transform group-hover:-translate-x-0.5" />
+            All projects
+          </Link>
+        </div>
+      </Container>
     </div>
   );
 }
